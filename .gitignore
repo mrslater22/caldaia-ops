@@ -1,0 +1,18 @@
+# dependencies
+node_modules/
+
+# next
+apps/portal/.next/
+apps/portal/out/
+
+# env
+.env
+.env.local
+.env*.local
+apps/portal/.env.local
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+*.tsbuildinfo
