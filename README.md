@@ -27,7 +27,7 @@ Sign in with credentials from `apps/boilerops/.env.local`.
 
 ## Vercel
 
-`vercel.json` sets **Root Directory** to `apps/boilerops`. Confirm in the dashboard:
+Set this in the **Vercel dashboard** (not in `vercel.json` — `rootDirectory` is not a valid config key):
 
 1. **Settings → General → Root Directory** = `apps/boilerops`
 2. **Settings → Build & Development**
