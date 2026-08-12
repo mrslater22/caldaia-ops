@@ -26,7 +26,7 @@ BoilerOps must not depend on FastField as the long-term document or inventory st
 
 | Boundary | Responsibility | Runtime |
 | --- | --- | --- |
-| `apps/portal` | Client + internal UI, light API routes | Next.js on Vercel |
+| `apps/boilerops` | Client + internal UI, light API routes | Next.js on Vercel |
 | `apps/worker` | Background jobs (ingest map, Storage sync, AI) | Node.js + BullMQ |
 | `packages/db` | Schema, migrations, typed queries | Shared |
 | `packages/fastfield` | Clients, validators, mappers | Shared |
@@ -42,7 +42,7 @@ BoilerOps must not depend on FastField as the long-term document or inventory st
 ```
 boilerops/
   apps/
-    portal/                 # Next.js app
+    boilerops/              # Next.js app (boilerops.caldaiacontrols.com)
     worker/                 # BullMQ worker service
   packages/
     db/
@@ -77,7 +77,16 @@ Authoritative structured data: orgs, plants, inspections, devices, tickets, cata
 
 Durable blobs: inspection PDFs, attachments, ticket attachments. Metadata and provenance live in `documents` (Postgres). Use private buckets and short-lived signed URLs for portal downloads.
 
-POC implication: no AWS S3 credentials; service-role uploads to a `reports` (or similar) bucket in the same Supabase project.
+POC implication: no AWS S3 credentials; service-role uploads in the same Supabase project.
+
+Buckets:
+
+| Bucket | Purpose | Public |
+| --- | --- | --- |
+| `reports` | Inspection PDFs and attachments | No — signed URLs |
+| `qr-codes` | Generated boiler/device QR PNGs (`boilers/{public_id}.png`, `devices/{public_id}.png`) | No — signed URLs / admin print |
+
+SQL: `supabase/migrations/20260811_storage_buckets.sql`
 
 Every report should carry:
 

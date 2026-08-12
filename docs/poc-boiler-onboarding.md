@@ -14,7 +14,7 @@ Prove the loop:
 
 | Item | Status |
 | --- | --- |
-| Next.js portal scaffold (`apps/portal`) | Done |
+| Next.js app scaffold (`apps/boilerops`) | Done |
 | Super admin login (env credentials + JWT cookie) | Done |
 | Supabase schema migration | Ready to run (`supabase/migrations/20260731_poc_schema.sql`) |
 | QR JSON APIs `/i/boiler/{id}` + `/i/device/{id}` | Implemented (needs Supabase keys) |

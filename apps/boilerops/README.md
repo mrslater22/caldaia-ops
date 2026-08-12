@@ -1,11 +1,20 @@
-# BoilerOps Portal
+# BoilerOps
 
-Next.js App Router proof-of-concept for Caldaia Controls.
+Next.js App Router app for Caldaia Controls. Planned production host: `https://boilerops.caldaiacontrols.com`.
 
 ## Run locally
 
+From the repo root:
+
 ```bash
-cd apps/portal
+npm install
+npm run dev
+```
+
+Or from this folder:
+
+```bash
+cd apps/boilerops
 cp .env.example .env.local
 # edit SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD, AUTH_SECRET
 npm install
@@ -16,7 +25,7 @@ Open [http://localhost:3000](http://localhost:3000) and sign in with the super a
 
 ## Auth (POC)
 
-Env-based super admin session (JWT cookie via `jose`). This is temporary until Supabase Auth is wired for multi-tenant portal users.
+Env-based super admin session (JWT cookie via `jose`). This is temporary until Supabase Auth is wired for multi-tenant users.
 
 ## Next
 

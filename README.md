@@ -2,26 +2,39 @@
 
 BoilerOps Intelligence Platform for **Caldaia Controls** — system of record, client portal, and AI device intelligence on top of FastField field inspections.
 
+Planned production URL: **https://boilerops.caldaiacontrols.com**
+
 ## Status
 
-Planning docs are in place. **POC portal scaffold** lives in `apps/portal` with super admin login.
+Planning docs are in place. The Next.js app lives in `apps/boilerops` with super admin login.
 
 From the repo root:
 
 ```bash
-npm install --prefix apps/portal
+npm install
 npm run dev
 ```
 
 Or from the app folder:
 
 ```bash
-cd apps/portal
+cd apps/boilerops
 npm install
 npm run dev
 ```
 
-Sign in with credentials from `apps/portal/.env.local`.
+Sign in with credentials from `apps/boilerops/.env.local`.
+
+## Vercel
+
+The Next.js app lives in `apps/boilerops`. Either:
+
+1. **Project Settings → General → Root Directory** = `apps/boilerops` (recommended), or
+2. Deploy from the repo root (uses npm workspaces + `vercel.json` so `next` is installed).
+
+Required env vars in Vercel (same as `apps/boilerops/.env.example`): `AUTH_SECRET`, `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET`, `SUPABASE_QR_BUCKET`.
+
+When the subdomain is ready, set `NEXT_PUBLIC_APP_URL=https://boilerops.caldaiacontrols.com` in Vercel and attach the domain to the project.
 
 ## Docs
 
