@@ -27,10 +27,13 @@ Sign in with credentials from `apps/boilerops/.env.local`.
 
 ## Vercel
 
-The Next.js app lives in `apps/boilerops`. Either:
+`vercel.json` sets **Root Directory** to `apps/boilerops`. Confirm in the dashboard:
 
-1. **Project Settings → General → Root Directory** = `apps/boilerops` (recommended), or
-2. Deploy from the repo root (uses npm workspaces + `vercel.json` so `next` is installed).
+1. **Settings → General → Root Directory** = `apps/boilerops`
+2. **Settings → Build & Development**
+   - Framework: Next.js
+   - Build Command: default (`npm run build` / `next build`) — do not override
+   - Output Directory: leave default (do **not** set `.next` or `apps/boilerops/.next`)
 
 Required env vars in Vercel (same as `apps/boilerops/.env.example`): `AUTH_SECRET`, `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET`, `SUPABASE_QR_BUCKET`.
 

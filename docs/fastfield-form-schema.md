@@ -64,12 +64,13 @@ API key: FastField portal → profile / account / API settings (wording varies b
 }
 ```
 
-### Option C — Capture from first live submission
+### Option C — Capture from first live submission (preferred)
 
-1. Point HTTP/HTTPS delivery at `/api/fastfield/submissions`  
-2. Submit one test form  
-3. Open **Admin → Submissions**, inspect raw JSON keys  
-4. Build `field_mappings_json` from those keys  
+1. Point HTTP/HTTPS delivery at `/api/fastfield/sample` (stores JSON only)
+2. Submit one test form
+3. Open **Admin → FastField sample**, copy JSON
+4. Register the form in **Admin → FastField forms** with `field_mappings_json`
+5. Switch Delivery to `/api/fastfield/submissions` for live ingest  
 
 ## Field mappings example
 

@@ -17,6 +17,22 @@ export default function AdminDashboardPage() {
 
       <section className="grid gap-4 md:grid-cols-2">
         <Link
+          href="/admin/fastfield-sample"
+          className="rounded-xl border border-border bg-panel p-5 transition hover:border-accent"
+        >
+          <p className="text-xs font-medium tracking-wide text-accent uppercase">
+            Sample
+          </p>
+          <h3 className="mt-2 text-base font-semibold text-foreground">
+            Capture FastField JSON
+          </h3>
+          <p className="mt-2 text-sm text-muted">
+            Copy a POST URL, submit your test form, and inspect the raw payload
+            before mapping.
+          </p>
+        </Link>
+
+        <Link
           href="/admin/fastfield-forms"
           className="rounded-xl border border-border bg-panel p-5 transition hover:border-accent"
         >
