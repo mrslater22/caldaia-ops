@@ -73,7 +73,7 @@ QR codes encode these URLs (FastField / scanner GETs them and expects JSON):
 
 ## Setup checklist
 
-1. Paste Supabase URL + anon + service role keys into `apps/portal/.env.local`
+1. Paste Supabase URL + anon + service role keys into `apps/boilerops/.env.local`
 2. Run `supabase/migrations/20260731_poc_schema.sql` in the Supabase SQL Editor
 3. Restart `npm run dev`
 4. Confirm FastField maps this JSON into form fields (adjust field names if their mapper needs a flatter shape)

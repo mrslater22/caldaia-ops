@@ -1,10 +1,13 @@
 {
   "name": "caldaia-ops",
   "private": true,
+  "workspaces": [
+    "apps/boilerops"
+  ],
   "scripts": {
-    "dev": "npm run dev --prefix apps/portal",
-    "build": "npm run build --prefix apps/portal",
-    "start": "npm run start --prefix apps/portal",
-    "lint": "npm run lint --prefix apps/portal"
+    "dev": "npm run dev -w boilerops",
+    "build": "npm run build -w boilerops",
+    "start": "npm run start -w boilerops",
+    "lint": "npm run lint -w boilerops"
   }
 }

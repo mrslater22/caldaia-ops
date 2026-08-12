@@ -10,7 +10,7 @@ Use these prompts after Sprint 0 validation is underway or complete enough to sc
 Build the initial BoilerOps monorepo for Caldaia Controls.
 
 Requirements:
-- Next.js App Router frontend in `apps/portal`
+- Next.js App Router frontend in `apps/boilerops`
 - Node worker service in `apps/worker`
 - Shared packages for db, fastfield, ai, auth, core, documents, ui
 - Supabase Postgres schema with migrations for organizations, plants, technicians, inspections, inspection_findings, safety_devices, safety_device_history, documents, tickets, ticket_messages, portal_users, device_catalog, device_intelligence, vendor_options, caldaia_inventory, compatible_replacements, integration_events

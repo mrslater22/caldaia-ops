@@ -2,14 +2,14 @@
 node_modules/
 
 # next
-apps/portal/.next/
-apps/portal/out/
+apps/boilerops/.next/
+apps/boilerops/out/
 
 # env
 .env
 .env.local
 .env*.local
-apps/portal/.env.local
+apps/boilerops/.env.local
 
 # misc
 .DS_Store
