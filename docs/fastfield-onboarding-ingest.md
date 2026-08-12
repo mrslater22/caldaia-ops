@@ -25,6 +25,14 @@ Set `FASTFIELD_WEBHOOK_SECRET` in `.env.local`. Then send one of:
 
 If the env var is empty, requests are accepted (POC only).
 
+## Capture a sample (before mapping)
+
+`POST /api/fastfield/sample`
+
+Example: `https://boilerops.vercel.app/api/fastfield/sample`
+
+Stores raw JSON only (no boiler/device create). View it at **Admin → FastField sample**.
+
 ## FastField form setup
 
 1. Form Builder → **Delivery**
