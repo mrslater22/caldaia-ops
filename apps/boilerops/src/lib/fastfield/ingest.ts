@@ -9,6 +9,16 @@ import {
   extractSubmissionId,
   mapBoilerOnboarding,
 } from "@/lib/fastfield/onboarding-mapper";
+import {
+  mapSiteOnboarding,
+  type MappedSiteOnboarding,
+  type SiteOnboardingFieldMappings,
+} from "@/lib/fastfield/site-onboarding-mapper";
+import {
+  syncSiteToFastField,
+  type SiteForFastFieldSync,
+} from "@/lib/fastfield/site-table-sync";
+import { generateAndStoreSiteQr, siteQrTargetUrl } from "@/lib/qr";
 import { createServiceClient } from "@/lib/supabase/server";
 
 export const DEMO_ORGANIZATION_ID = "00000000-0000-4000-8000-000000000001";
@@ -47,7 +57,7 @@ function secretsEqual(a: string, b: string): boolean {
   return timingSafeEqual(left, right);
 }
 
-function makePublicId(prefix: "blr" | "dev"): string {
+function makePublicId(prefix: "site" | "blr" | "dev"): string {
   const hex = createHash("sha256")
     .update(`${prefix}-${Date.now()}-${Math.random()}`)
     .digest("hex")
@@ -60,7 +70,9 @@ export type RegisteredForm = {
   fastfield_form_id: string;
   name: string;
   purpose: string;
-  field_mappings_json: OnboardingFieldMappings;
+  field_mappings_json:
+    | OnboardingFieldMappings
+    | SiteOnboardingFieldMappings;
   active: boolean;
 };
 
@@ -104,10 +116,25 @@ export type IngestResult = {
   formId: string | null;
   purpose: string;
   duplicate: boolean;
+  sitePublicId: string | null;
   boilerPublicId: string | null;
   devicePublicIds: string[];
+  fastFieldSyncStatus?: "pending" | "synced" | "failed";
   warning?: string;
 };
+
+function inferPurpose(
+  registered: RegisteredForm | null,
+  payload: Record<string, unknown>,
+): string {
+  if (registered) return registered.purpose;
+  const formId = extractFormId(payload);
+  const formName = extractFormName(payload)?.toLowerCase();
+  if (formId === "1244818" || formName === "site onboarding") {
+    return "site_onboarding";
+  }
+  return "boiler_onboarding";
+}
 
 export async function ingestFastFieldSubmission(
   payload: Record<string, unknown>,
@@ -116,27 +143,40 @@ export async function ingestFastFieldSubmission(
   const submissionId = extractSubmissionId(payload);
   const formId = extractFormId(payload);
   const registered = await resolveRegisteredForm(payload);
-  const purpose = registered?.purpose ?? "boiler_onboarding";
+  const purpose = inferPurpose(registered, payload);
   const idempotencyKey = `fastfield:${purpose}:${submissionId}`;
 
   const { data: existing } = await supabase
     .from("integration_events")
-    .select("id, status, payload_json")
+    .select("id, status, payload_json, result_json")
     .eq("idempotency_key", idempotencyKey)
     .maybeSingle();
 
   if (existing) {
-    const prior = existing.payload_json as {
-      result?: { boilerPublicId?: string; devicePublicIds?: string[] };
+    const legacyPayload = existing.payload_json as {
+      result?: {
+        sitePublicId?: string;
+        boilerPublicId?: string;
+        devicePublicIds?: string[];
+        fastFieldSyncStatus?: "pending" | "synced" | "failed";
+      };
     } | null;
+    const prior = (existing.result_json ?? legacyPayload?.result ?? {}) as {
+      sitePublicId?: string;
+      boilerPublicId?: string;
+      devicePublicIds?: string[];
+      fastFieldSyncStatus?: "pending" | "synced" | "failed";
+    };
     return {
       eventId: existing.id,
       submissionId,
       formId: formId ?? registered?.fastfield_form_id ?? null,
       purpose,
       duplicate: true,
-      boilerPublicId: prior?.result?.boilerPublicId ?? null,
-      devicePublicIds: prior?.result?.devicePublicIds ?? [],
+      sitePublicId: prior.sitePublicId ?? null,
+      boilerPublicId: prior.boilerPublicId ?? null,
+      devicePublicIds: prior.devicePublicIds ?? [],
+      fastFieldSyncStatus: prior.fastFieldSyncStatus,
     };
   }
 
@@ -158,32 +198,57 @@ export async function ingestFastFieldSubmission(
     throw new Error(eventError?.message || "Failed to store integration event.");
   }
 
-  const warning = registered
+  let warning = registered
     ? undefined
-    : "No registered FastField form matched this submission; used default boiler_onboarding aliases.";
+    : `No registered FastField form matched this submission; inferred ${purpose}.`;
 
   try {
-    if (purpose !== "boiler_onboarding") {
+    let created: {
+      sitePublicId: string | null;
+      boilerPublicId: string | null;
+      devicePublicIds: string[];
+      fastFieldSyncStatus?: "pending" | "synced" | "failed";
+    };
+
+    if (purpose === "site_onboarding") {
+      const mappings = (registered?.field_mappings_json ??
+        {}) as SiteOnboardingFieldMappings;
+      const mapped = mapSiteOnboarding(payload, mappings);
+      const persisted = await persistSiteOnboarding(mapped, submissionId);
+      const sync = await syncSiteToFastField(persisted.site);
+      created = {
+        sitePublicId: persisted.sitePublicId,
+        boilerPublicId: null,
+        devicePublicIds: [],
+        fastFieldSyncStatus: sync.status,
+      };
+      if (sync.error) {
+        warning = warning
+          ? `${warning} ${sync.error}`
+          : sync.error;
+      }
+    } else if (purpose === "boiler_onboarding") {
+      const mappings = (registered?.field_mappings_json ??
+        {}) as OnboardingFieldMappings;
+      const mapped = mapBoilerOnboarding(payload, mappings);
+      const boiler = await persistOnboarding(mapped, submissionId);
+      created = {
+        sitePublicId: null,
+        boilerPublicId: boiler.boilerPublicId,
+        devicePublicIds: boiler.devicePublicIds,
+      };
+    } else {
       throw new Error(
         `Unsupported form purpose "${purpose}". Register a supported purpose.`,
       );
     }
-
-    const mappings = (registered?.field_mappings_json ??
-      {}) as OnboardingFieldMappings;
-    const mapped = mapBoilerOnboarding(payload, mappings);
-    const created = await persistOnboarding(mapped, submissionId);
 
     await supabase
       .from("integration_events")
       .update({
         status: "processed",
         processed_at: new Date().toISOString(),
-        payload_json: {
-          ...payload,
-          result: created,
-          warning,
-        },
+        result_json: { ...created, warning },
       })
       .eq("id", event.id);
 
@@ -193,8 +258,10 @@ export async function ingestFastFieldSubmission(
       formId: formId ?? registered?.fastfield_form_id ?? null,
       purpose,
       duplicate: false,
+      sitePublicId: created.sitePublicId,
       boilerPublicId: created.boilerPublicId,
       devicePublicIds: created.devicePublicIds,
+      fastFieldSyncStatus: created.fastFieldSyncStatus,
       warning,
     };
   } catch (error) {
@@ -241,22 +308,47 @@ export async function reprocessIntegrationEvent(eventId: string) {
     })
     .eq("id", eventId);
 
-  // Bypass duplicate short-circuit by temporarily rotating idempotency key
   const submissionId = extractSubmissionId(rawPayload);
   const registered = await resolveRegisteredForm(rawPayload);
-  const purpose = registered?.purpose ?? "boiler_onboarding";
-  const mappings = (registered?.field_mappings_json ??
-    {}) as OnboardingFieldMappings;
+  const purpose = inferPurpose(registered, rawPayload);
+  let warning = registered
+    ? undefined
+    : `No registered FastField form matched this submission; inferred ${purpose}.`;
+  let created: {
+    sitePublicId: string | null;
+    boilerPublicId: string | null;
+    devicePublicIds: string[];
+    fastFieldSyncStatus?: "pending" | "synced" | "failed";
+  };
 
-  if (purpose !== "boiler_onboarding") {
+  if (purpose === "site_onboarding") {
+    const mappings = (registered?.field_mappings_json ??
+      {}) as SiteOnboardingFieldMappings;
+    const mapped = mapSiteOnboarding(rawPayload, mappings);
+    const persisted = await persistSiteOnboarding(mapped, submissionId);
+    const sync = await syncSiteToFastField(persisted.site);
+    created = {
+      sitePublicId: persisted.sitePublicId,
+      boilerPublicId: null,
+      devicePublicIds: [],
+      fastFieldSyncStatus: sync.status,
+    };
+    if (sync.error) {
+      warning = warning ? `${warning} ${sync.error}` : sync.error;
+    }
+  } else if (purpose === "boiler_onboarding") {
+    const mappings = (registered?.field_mappings_json ??
+      {}) as OnboardingFieldMappings;
+    const mapped = mapBoilerOnboarding(rawPayload, mappings);
+    const boiler = await persistOnboarding(mapped, submissionId);
+    created = {
+      sitePublicId: null,
+      boilerPublicId: boiler.boilerPublicId,
+      devicePublicIds: boiler.devicePublicIds,
+    };
+  } else {
     throw new Error(`Unsupported form purpose "${purpose}".`);
   }
-
-  const mapped = mapBoilerOnboarding(rawPayload, mappings);
-  const created = await persistOnboarding(mapped, submissionId);
-  const warning = registered
-    ? undefined
-    : "No registered FastField form matched this submission; used default boiler_onboarding aliases.";
 
   await supabase
     .from("integration_events")
@@ -267,21 +359,124 @@ export async function reprocessIntegrationEvent(eventId: string) {
         extractFormId(rawPayload) ?? registered?.fastfield_form_id ?? null,
       processed_at: new Date().toISOString(),
       error_message: null,
-      payload_json: {
-        ...rawPayload,
-        result: created,
-        warning,
-      },
+      payload_json: rawPayload,
+      result_json: { ...created, warning },
     })
     .eq("id", eventId);
 
   return {
     eventId,
     submissionId,
+    sitePublicId: created.sitePublicId,
     boilerPublicId: created.boilerPublicId,
     devicePublicIds: created.devicePublicIds,
+    fastFieldSyncStatus: created.fastFieldSyncStatus,
     warning,
   };
+}
+
+async function persistSiteOnboarding(
+  mapped: MappedSiteOnboarding,
+  submissionId: string,
+): Promise<{ sitePublicId: string; site: SiteForFastFieldSync }> {
+  const supabase = createServiceClient();
+  const siteColumns =
+    "id, organization_id, public_id, site_code, facility_name, contact_name, contact_email, contact_phone, qr_target_url";
+  let existing: SiteForFastFieldSync | null = null;
+
+  if (mapped.boilerops_site_id) {
+    const { data, error } = await supabase
+      .from("sites")
+      .select(siteColumns)
+      .eq("organization_id", DEMO_ORGANIZATION_ID)
+      .eq("public_id", mapped.boilerops_site_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) {
+      throw new Error(
+        `Unknown bo_siteid "${mapped.boilerops_site_id}"; refusing to create a duplicate site.`,
+      );
+    }
+    existing = data as SiteForFastFieldSync;
+  }
+
+  if (!existing && mapped.source_site_id) {
+    const { data, error } = await supabase
+      .from("sites")
+      .select(siteColumns)
+      .eq("organization_id", DEMO_ORGANIZATION_ID)
+      .eq("fastfield_source_site_id", mapped.source_site_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    existing = data as SiteForFastFieldSync | null;
+  }
+
+  if (!existing) {
+    const { data, error } = await supabase
+      .from("sites")
+      .select(siteColumns)
+      .eq("organization_id", DEMO_ORGANIZATION_ID)
+      .eq("site_code", mapped.site_code)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    existing = data as SiteForFastFieldSync | null;
+  }
+
+  const publicId = existing?.public_id ?? makePublicId("site");
+  const qrTargetUrl = siteQrTargetUrl(publicId);
+  const values = {
+    organization_id: DEMO_ORGANIZATION_ID,
+    site_code: mapped.site_code,
+    facility_name: mapped.facility_name,
+    address: mapped.address,
+    city: mapped.city,
+    state: mapped.state,
+    zip: mapped.zip,
+    timezone: mapped.timezone,
+    contact_name: mapped.contact_name,
+    contact_email: mapped.contact_email,
+    contact_phone: mapped.contact_phone,
+    fastfield_source_site_id: mapped.source_site_id,
+    last_fastfield_submission_id: submissionId,
+    qr_target_url: qrTargetUrl,
+  };
+
+  let site: SiteForFastFieldSync;
+  if (existing) {
+    const { data, error } = await supabase
+      .from("sites")
+      .update(values)
+      .eq("id", existing.id)
+      .select(siteColumns)
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message || "Failed to update site.");
+    }
+    site = data as SiteForFastFieldSync;
+  } else {
+    const { data, error } = await supabase
+      .from("sites")
+      .insert({ ...values, public_id: publicId })
+      .select(siteColumns)
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message || "Failed to create site.");
+    }
+    site = data as SiteForFastFieldSync;
+  }
+
+  const qr = await generateAndStoreSiteQr(site.public_id);
+  const { error: qrUpdateError } = await supabase
+    .from("sites")
+    .update({
+      qr_target_url: qr.targetUrl,
+      qr_storage_path: qr.storagePath,
+    })
+    .eq("id", site.id);
+  if (qrUpdateError) throw new Error(qrUpdateError.message);
+
+  site.qr_target_url = qr.targetUrl;
+  return { sitePublicId: site.public_id, site };
 }
 
 async function persistOnboarding(

@@ -15,14 +15,16 @@ Client organization (tenant).
 | billing metadata | Billing-related fields (flexible) |
 | created_at / updated_at | Timestamps |
 
-## plants
+## sites
 
-Physical boiler plant / facility.
+Client facility, such as a VA Medical Center.
 
 | Field | Notes |
 | --- | --- |
 | id | PK |
 | organization_id | FK → organizations |
+| public_id | Stable BoilerOps/FastField/QR identifier |
+| site_code | 3–4 character human code, such as `CAP` |
 | facility_name | |
 | site_code | Internal site code |
 | address, city, state, zip | Location |
@@ -31,7 +33,24 @@ Physical boiler plant / facility.
 | notes | Free text |
 | created_at / updated_at | |
 
-> Also plan a **public ID** for QR/portal URLs (not the internal numeric/uuid exposed carelessly).
+## inspection_targets
+
+Persistent thing that can be selected for inspection. A target is either a
+Boiler or a Plant; it is not an inspection event.
+
+| Field | Notes |
+| --- | --- |
+| id / public_id | Internal PK and stable integration ID |
+| organization_id / site_id | Tenant and parent site |
+| target_type | `boiler` or `plant` |
+| target_code | Human code such as `BLR1` |
+| display_name | Form and portal label |
+| location_description | Physical location within the site |
+| service_status | Active / inactive / retired |
+| created_at / updated_at | |
+
+Type-specific fields are stored in one-to-one `boiler_target_details` and
+`plant_target_details` tables.
 
 ## technicians
 
@@ -51,7 +70,8 @@ One inspection event.
 | Field | Notes |
 | --- | --- |
 | id | PK |
-| plant_id | FK → plants |
+| site_id | FK → sites |
+| inspection_target_id | FK → inspection_targets |
 | technician_id | FK → technicians |
 | fastfield_submission_id | Idempotency / upsert key |
 | fastfield_form_id | Source form |
@@ -79,13 +99,13 @@ One inspection event.
 
 ## safety_devices
 
-Current installed inventory item at a plant.
+Current physical device installed on an inspectable Boiler or Plant target.
 
 | Field | Notes |
 | --- | --- |
 | id | PK |
-| plant_id | FK → plants |
-| equipment_group | |
+| inspection_target_id | FK → inspection_targets |
+| device_code | Human code such as `WL1` |
 | device_type | |
 | manufacturer | Field-collected |
 | model | Field-collected |
@@ -94,9 +114,19 @@ Current installed inventory item at a plant.
 | set_point / trip_point | |
 | service_status | |
 | location_description | |
-| last_inspection_id | FK → inspections |
 | normalized_device_key | Link toward catalog |
 | created_at / updated_at | |
+
+## safety_test_definitions / inspection_tests / inspection_test_devices
+
+- `safety_test_definitions` is the reusable catalog of approximately 40 test
+  and report-section types.
+- `inspection_tests` is one activated test/report section during an inspection.
+- `inspection_test_devices` links all devices tested in that section.
+
+This produces the hierarchy:
+
+`Inspection → Safety Test / Report Section → Devices Tested`
 
 ## safety_device_history
 
@@ -118,7 +148,7 @@ Append-only snapshots across inspections.
 | Field | Notes |
 | --- | --- |
 | id | PK |
-| organization_id / plant_id / inspection_id | Scope |
+| organization_id / site_id / inspection_id | Scope |
 | document_type | Report, attachment, etc. |
 | file_name | |
 | storage_bucket | Supabase Storage bucket name |
@@ -132,7 +162,7 @@ Append-only snapshots across inspections.
 
 Support workflow.
 
-**tickets:** organization_id, plant_id, submitted_by_user_id, assigned_to_user_id, subject, description, priority, status, related_device_id, related_inspection_id, timestamps.
+**tickets:** organization_id, site_id, submitted_by_user_id, assigned_to_user_id, subject, description, priority, status, related_device_id, related_inspection_id, timestamps.
 
 **ticket_messages:** ticket_id, author_user_id, body, internal_only, created_at.
 
