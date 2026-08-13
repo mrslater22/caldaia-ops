@@ -55,9 +55,16 @@ export async function POST(request: Request) {
         form_id: result.formId,
         purpose: result.purpose,
         warning: result.warning ?? null,
+        site_public_id: result.sitePublicId,
         boiler_public_id: result.boilerPublicId,
         device_public_ids: result.devicePublicIds,
-        urls: result.boilerPublicId
+        fastfield_sync_status: result.fastFieldSyncStatus ?? null,
+        urls: result.sitePublicId
+          ? {
+              site: `${appUrl}/i/site/${result.sitePublicId}`,
+              site_qr: `${appUrl}/i/site/${result.sitePublicId}/qr`,
+            }
+          : result.boilerPublicId
           ? {
               boiler: `${appUrl}/i/boiler/${result.boilerPublicId}`,
               devices: result.devicePublicIds.map(
