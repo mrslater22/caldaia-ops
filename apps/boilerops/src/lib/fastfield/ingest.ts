@@ -1,4 +1,5 @@
-import { createHash, timingSafeEqual } from "crypto";
+import { timingSafeEqual } from "crypto";
+import { DEMO_ORGANIZATION_ID } from "@/lib/constants";
 import type {
   MappedBoilerOnboarding,
   OnboardingFieldMappings,
@@ -11,17 +12,12 @@ import {
 } from "@/lib/fastfield/onboarding-mapper";
 import {
   mapSiteOnboarding,
-  type MappedSiteOnboarding,
   type SiteOnboardingFieldMappings,
 } from "@/lib/fastfield/site-onboarding-mapper";
-import {
-  syncSiteToFastField,
-  type SiteForFastFieldSync,
-} from "@/lib/fastfield/site-table-sync";
-import { generateAndStoreSiteQr, siteQrTargetUrl } from "@/lib/qr";
+import { syncSiteToFastField } from "@/lib/fastfield/site-table-sync";
+import { makePublicId } from "@/lib/public-id";
+import { persistSiteOnboarding } from "@/lib/sites/service";
 import { createServiceClient } from "@/lib/supabase/server";
-
-export const DEMO_ORGANIZATION_ID = "00000000-0000-4000-8000-000000000001";
 
 export function authorizeFastFieldRequest(request: Request): boolean {
   const configuredSecret = process.env.FASTFIELD_WEBHOOK_SECRET?.trim();
@@ -55,14 +51,6 @@ function secretsEqual(a: string, b: string): boolean {
   const right = Buffer.from(b);
   if (left.length !== right.length) return false;
   return timingSafeEqual(left, right);
-}
-
-function makePublicId(prefix: "site" | "blr" | "dev"): string {
-  const hex = createHash("sha256")
-    .update(`${prefix}-${Date.now()}-${Math.random()}`)
-    .digest("hex")
-    .slice(0, 12);
-  return `${prefix}_${hex}`;
 }
 
 export type RegisteredForm = {
@@ -373,110 +361,6 @@ export async function reprocessIntegrationEvent(eventId: string) {
     fastFieldSyncStatus: created.fastFieldSyncStatus,
     warning,
   };
-}
-
-async function persistSiteOnboarding(
-  mapped: MappedSiteOnboarding,
-  submissionId: string,
-): Promise<{ sitePublicId: string; site: SiteForFastFieldSync }> {
-  const supabase = createServiceClient();
-  const siteColumns =
-    "id, organization_id, public_id, site_code, facility_name, contact_name, contact_email, contact_phone, qr_target_url";
-  let existing: SiteForFastFieldSync | null = null;
-
-  if (mapped.boilerops_site_id) {
-    const { data, error } = await supabase
-      .from("sites")
-      .select(siteColumns)
-      .eq("organization_id", DEMO_ORGANIZATION_ID)
-      .eq("public_id", mapped.boilerops_site_id)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!data) {
-      throw new Error(
-        `Unknown bo_siteid "${mapped.boilerops_site_id}"; refusing to create a duplicate site.`,
-      );
-    }
-    existing = data as SiteForFastFieldSync;
-  }
-
-  if (!existing && mapped.source_site_id) {
-    const { data, error } = await supabase
-      .from("sites")
-      .select(siteColumns)
-      .eq("organization_id", DEMO_ORGANIZATION_ID)
-      .eq("fastfield_source_site_id", mapped.source_site_id)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    existing = data as SiteForFastFieldSync | null;
-  }
-
-  if (!existing) {
-    const { data, error } = await supabase
-      .from("sites")
-      .select(siteColumns)
-      .eq("organization_id", DEMO_ORGANIZATION_ID)
-      .eq("site_code", mapped.site_code)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    existing = data as SiteForFastFieldSync | null;
-  }
-
-  const publicId = existing?.public_id ?? makePublicId("site");
-  const qrTargetUrl = siteQrTargetUrl(publicId);
-  const values = {
-    organization_id: DEMO_ORGANIZATION_ID,
-    site_code: mapped.site_code,
-    facility_name: mapped.facility_name,
-    address: mapped.address,
-    city: mapped.city,
-    state: mapped.state,
-    zip: mapped.zip,
-    timezone: mapped.timezone,
-    contact_name: mapped.contact_name,
-    contact_email: mapped.contact_email,
-    contact_phone: mapped.contact_phone,
-    fastfield_source_site_id: mapped.source_site_id,
-    last_fastfield_submission_id: submissionId,
-    qr_target_url: qrTargetUrl,
-  };
-
-  let site: SiteForFastFieldSync;
-  if (existing) {
-    const { data, error } = await supabase
-      .from("sites")
-      .update(values)
-      .eq("id", existing.id)
-      .select(siteColumns)
-      .single();
-    if (error || !data) {
-      throw new Error(error?.message || "Failed to update site.");
-    }
-    site = data as SiteForFastFieldSync;
-  } else {
-    const { data, error } = await supabase
-      .from("sites")
-      .insert({ ...values, public_id: publicId })
-      .select(siteColumns)
-      .single();
-    if (error || !data) {
-      throw new Error(error?.message || "Failed to create site.");
-    }
-    site = data as SiteForFastFieldSync;
-  }
-
-  const qr = await generateAndStoreSiteQr(site.public_id);
-  const { error: qrUpdateError } = await supabase
-    .from("sites")
-    .update({
-      qr_target_url: qr.targetUrl,
-      qr_storage_path: qr.storagePath,
-    })
-    .eq("id", site.id);
-  if (qrUpdateError) throw new Error(qrUpdateError.message);
-
-  site.qr_target_url = qr.targetUrl;
-  return { sitePublicId: site.public_id, site };
 }
 
 async function persistOnboarding(

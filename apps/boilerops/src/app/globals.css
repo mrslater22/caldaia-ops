@@ -29,3 +29,30 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+@media print {
+  :root {
+    --background: #ffffff;
+    --foreground: #000000;
+    --panel: #ffffff;
+    --border: #c8c8c8;
+    --muted: #333333;
+  }
+
+  body {
+    print-color-adjust: exact;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  table {
+    break-inside: auto;
+  }
+
+  tr {
+    break-inside: avoid;
+  }
+}

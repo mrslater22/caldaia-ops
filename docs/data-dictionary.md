@@ -1,6 +1,7 @@
 # Data Dictionary
 
-Canonical domain entities for BoilerOps. Types are logical; physical DDL lands in `packages/db` migrations during Phase 1.
+Canonical domain entities for BoilerOps. Physical DDL is maintained in
+`supabase/migrations`.
 
 ## organizations
 
@@ -63,6 +64,26 @@ Type-specific fields are stored in one-to-one `boiler_target_details` and
 | active | |
 | created_at / updated_at | |
 
+## inspection_jobs / inspection_job_targets
+
+An administrator-created work package for one Site. A job establishes the
+allowed Boiler and Plant targets before field work begins.
+
+| Field | Notes |
+| --- | --- |
+| id / public_id | Internal PK and immutable QR/integration ID |
+| organization_id / site_id | Tenant and parent Site |
+| job_num | Human-readable `YYYY-####` number, unique per organization |
+| title / notes | Planning details |
+| status | Draft / planned / in progress / completed / cancelled |
+| scheduled_start_date / scheduled_end_date | Planned field-work dates |
+| qr_target_url / qr_storage_path | Job QR destination and private object path |
+| created_at / updated_at | |
+
+`inspection_job_targets` is the scoped junction between a job and its selected
+`inspection_targets`. Composite foreign keys guarantee every selected target
+belongs to the same Site and organization as the job.
+
 ## inspections
 
 One inspection event.
@@ -70,6 +91,7 @@ One inspection event.
 | Field | Notes |
 | --- | --- |
 | id | PK |
+| inspection_job_id | Optional FK → inspection_jobs |
 | site_id | FK → sites |
 | inspection_target_id | FK → inspection_targets |
 | technician_id | FK → technicians |
@@ -117,18 +139,29 @@ Current physical device installed on an inspectable Boiler or Plant target.
 | normalized_device_key | Link toward catalog |
 | created_at / updated_at | |
 
-## safety_test_definitions / inspection_tests / inspection_test_devices
+## safety_test_definitions / safety_test_definition_versions / safety_test_questions
 
 - `safety_test_definitions` is the reusable catalog of approximately 40 test
   and report-section types.
+- `safety_test_definition_versions` freezes the procedure, diagram, response
+  schema, and report configuration used at a point in time.
+- `safety_test_questions` defines ordered, typed questions for one definition
+  version and identifies whether each answer belongs to the test section or a
+  participating device.
+
+## inspection_tests / inspection_test_devices / inspection_test_answers
+
 - `inspection_tests` is one activated test/report section during an inspection.
 - `inspection_test_devices` links all devices tested in that section.
+- `inspection_test_answers` stores typed JSON answers against the exact
+  definition version and question. Device-scoped answers include a
+  `safety_device_id`.
 
 This produces the hierarchy:
 
-`Inspection → Safety Test / Report Section → Devices Tested`
+`Inspection → Versioned Safety Test / Report Section → Questions + Devices`
 
-## safety_device_history
+## safety_device_observations
 
 Append-only snapshots across inspections.
 
@@ -142,6 +175,31 @@ Append-only snapshots across inspections.
 | observed_condition | |
 | technician_notes | |
 | created_at | |
+
+## inspection_certifications
+
+Immutable certification evidence attached to an inspection. Each row stores the
+certification type, exact statement shown to the signer, signer identity,
+signature timestamp, and optional signature image storage path.
+
+## report_packages / report_package_inspections
+
+A versioned final client deliverable assembled from the target inspections in
+one inspection job.
+
+| Field | Notes |
+| --- | --- |
+| id / public_id | Internal PK and stable package ID |
+| organization_id / site_id / inspection_job_id | Tenant, Site, and parent job |
+| version_number | Monotonic version within the job |
+| status | Draft / generating / ready / failed / superseded |
+| storage_bucket / storage_path | Final generated document location |
+| mime_type / file_size / checksum_sha256 | File integrity metadata |
+| generated_at / metadata_json | Generation audit and renderer metadata |
+| created_at / updated_at | |
+
+`report_package_inspections` records the ordered inspections included in each
+package version.
 
 ## documents
 
