@@ -5,17 +5,67 @@ export default function AdminDashboardPage() {
     <div className="space-y-8">
       <section className="space-y-2">
         <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-          Proof-of-concept console
+          Operations console
         </h2>
         <p className="max-w-2xl text-sm text-muted">
-          Register your FastField form ID + schema, then manage incoming
-          submissions. Prefill JSON lives at{" "}
+          Plan inspection jobs, manage assets, and administer FastField
+          integrations. Prefill JSON lives at{" "}
+          <code className="text-foreground">/i/site/&#123;id&#125;</code>,{" "}
+          <code className="text-foreground">/i/job/&#123;id&#125;</code>,{" "}
           <code className="text-foreground">/i/boiler/&#123;id&#125;</code> and{" "}
           <code className="text-foreground">/i/device/&#123;id&#125;</code>.
         </p>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
+        <Link
+          href="/admin/documentation"
+          className="rounded-xl border border-border bg-panel p-5 transition hover:border-accent"
+        >
+          <p className="text-xs font-medium tracking-wide text-accent uppercase">
+            Reference
+          </p>
+          <h3 className="mt-2 text-base font-semibold text-foreground">
+            Documentation library
+          </h3>
+          <p className="mt-2 text-sm text-muted">
+            View and print native control-panel versions of the planning,
+            architecture, report-review, and FastField device canvases.
+          </p>
+        </Link>
+
+        <Link
+          href="/admin/inspection-jobs"
+          className="rounded-xl border border-border bg-panel p-5 transition hover:border-accent"
+        >
+          <p className="text-xs font-medium tracking-wide text-accent uppercase">
+            Operations
+          </p>
+          <h3 className="mt-2 text-base font-semibold text-foreground">
+            Inspection job planning
+          </h3>
+          <p className="mt-2 text-sm text-muted">
+            Generate job numbers, assign Site and Boiler/Plant scope, and issue
+            job QR codes for field work.
+          </p>
+        </Link>
+
+        <Link
+          href="/admin/sites"
+          className="rounded-xl border border-border bg-panel p-5 transition hover:border-accent"
+        >
+          <p className="text-xs font-medium tracking-wide text-accent uppercase">
+            Sites
+          </p>
+          <h3 className="mt-2 text-base font-semibold text-foreground">
+            Site management
+          </h3>
+          <p className="mt-2 text-sm text-muted">
+            Maintain site details, inspect FastField sync status, and view or
+            download site QR codes.
+          </p>
+        </Link>
+
         <Link
           href="/admin/fastfield-sample"
           className="rounded-xl border border-border bg-panel p-5 transition hover:border-accent"
@@ -45,6 +95,22 @@ export default function AdminDashboardPage() {
           <p className="mt-2 text-sm text-muted">
             Store form ID, schema JSON, and field mappings for onboarding
             ingest.
+          </p>
+        </Link>
+
+        <Link
+          href="/admin/fastfield-data-tables"
+          className="rounded-xl border border-border bg-panel p-5 transition hover:border-accent"
+        >
+          <p className="text-xs font-medium tracking-wide text-accent uppercase">
+            Data Tables
+          </p>
+          <h3 className="mt-2 text-base font-semibold text-foreground">
+            FastField Data Table configuration
+          </h3>
+          <p className="mt-2 text-sm text-muted">
+            Manage Site Info, Inspection Info, and Device Info endpoints,
+            identifiers, field mappings, and activation status.
           </p>
         </Link>
 

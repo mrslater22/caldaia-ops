@@ -130,3 +130,17 @@ is marked pending for follow-up.
 
 These routes are public in the POC. Before production, decide whether site
 contact fields require an authenticated or signed lookup.
+
+## Admin site management
+
+Authenticated administrators can open `/admin/sites` to:
+
+- Create and edit site details
+- Review the stable BoilerOps Site ID
+- View and download the site QR code
+- Regenerate a missing or outdated QR image
+- Review FastField synchronization status and retry synchronization
+
+The feature uses authenticated `/api/admin/sites` routes. Site deletion is
+intentionally excluded because sites can own inspection targets and historical
+records.

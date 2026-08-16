@@ -1,0 +1,61 @@
+Name,Value,Filter Key,Score
+AFOSV,AFOSV,Automatic Process Valve,1
+ALWCO,ALWCO,Level Alarm / Cutoff,1
+ALWCOHW,ALWCOHW,Level Alarm / Cutoff,1
+APFGSOV,APFGSOV,Automatic Process Valve,1
+APFGSVV,APFGSVV,Automatic Process Valve,1
+AMSOV,AMSOV,Automatic Process Valve,1
+CAPA,CAPA,Absolute-Pressure Switch / Alarm,1
+CAPS,CAPS,Differential-Pressure Switch,1
+DAODS,DAODS,System Assembly,1
+DASV,DASV,Steam Safety Valve,1
+ESPB,ESPB,Emergency-Stop Station,1
+FDDWOPS,FDDWOPS,Position / Proving Switch,1
+FDMIS,FDMIS,Motor-Current Relay / Interlock,1
+FGRDI,FGRDI,Position / Proving Switch,1
+AFGSOV,AFGSOV,Automatic Process Valve,1
+AFGSVV,AFGSVV,Automatic Process Valve,1
+FPI,FPI,Differential-Pressure Switch,1
+FS,FS,Flow Switch,1
+FSMFO,FSMFO,Flame Scanner,1
+FSNSIS,FSNSIS,Flame Scanner,1
+HFGPAMG,HFGPAMG,Absolute-Pressure Switch / Alarm,1
+HFGPALP,HFGPALP,Absolute-Pressure Switch / Alarm,1
+HFGPCS,HFGPCS,Absolute-Pressure Switch / Alarm,1
+HFOPCS,HFOPCS,Absolute-Pressure Switch / Alarm,1
+HWAB,HWAB,Level Alarm / Cutoff,1
+HWACT,HWACT,Level Alarm / Cutoff,1
+HWTS,HWTS,Temperature Limit Switch,1
+HWADT,HWADT,Level Alarm / Cutoff,1
+IT,IT,System / Procedure Test,1
+LAMDPS,LAMDPS,Differential-Pressure Switch,1
+LAMPS,LAMPS,Absolute-Pressure Switch / Alarm,1
+LFGOLI,LFGOLI,Flue-Gas Oxygen Analyzer / Interlock,1
+LFGPCS,LFGPCS,Absolute-Pressure Switch / Alarm,1
+LFOPCS,LFOPCS,Absolute-Pressure Switch / Alarm,1
+LFPS,LFPS,Position / Proving Switch,1
+LPFGPCS,LPFGPCS,Absolute-Pressure Switch / Alarm,1
+LOOP,LOOP,Isolation Valve / Test Arrangement,1
+LRVE,LRVE,Liquid Relief Valve,1
+LRVEHW,LRVEHW,Liquid Relief Valve,1
+LRVOPS,LRVOPS,Liquid Relief Valve,1
+LWA,LWA,Level Alarm / Cutoff,1
+LWACT,LWACT,Level Alarm / Cutoff,1
+LWADT,LWADT,Level Alarm / Cutoff,1
+LWCO,LWCO,Level Alarm / Cutoff,1
+LWCOHW,LWCOHW,Level Alarm / Cutoff,1
+MFIT,MFIT,System / Procedure Test,1
+HHSBSPLS,HHSBSPLS,Absolute-Pressure Switch / Alarm,1
+OADIA,OADIA,Position / Proving Switch,1
+OAMUIA,OAMUIA,Differential-Pressure Switch,1
+OBPS,OBPS,Position / Proving Switch,1
+OSDPI,OSDPI,Position / Proving Switch,1
+PAPS,PAPS,Differential-Pressure Switch,1
+POC_AFOSV,POC_AFOSV,Valve Proof-of-Closure Switch,1
+POC_AFGSOV,POC_AFGSOV,Valve Proof-of-Closure Switch,1
+PPT,PPT,System / Procedure Test,1
+PRV,PRV,Pressure-Reducing Valve,1
+HBSPLS,HBSPLS,Absolute-Pressure Switch / Alarm,1
+SLAMPS,SLAMPS,Absolute-Pressure Switch / Alarm,1
+SVB,SVB,Steam Safety Valve,1
+SVFPRV,SVFPRV,Steam Safety Valve,1

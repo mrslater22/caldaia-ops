@@ -2,8 +2,8 @@
 
 **Client:** Caldaia Controls  
 **Project:** BoilerOps Intelligence Platform  
-**Last updated:** August 12, 2026  
-**Current phase:** FastField integration and asset onboarding proof of concept
+**Last updated:** August 15, 2026
+**Current phase:** Operational foundation and inspection-job planning
 
 ## Executive Summary
 
@@ -13,10 +13,11 @@ intelligence. FastField will remain the field data-collection platform, while
 BoilerOps will manage structured records, QR-linked assets, historical data,
 client access, and integrations.
 
-The current development effort has validated real FastField submission data and
-established the initial Site Onboarding workflow. The next milestone is a live
-end-to-end test that creates a site in BoilerOps, generates its QR code, and
-synchronizes the site into FastField's Site Info Data Table.
+The current development effort has moved beyond the initial proof of concept.
+In addition to Site Onboarding and FastField integration, BoilerOps now has the
+data foundation and first administrative workflow for planning inspection jobs,
+assigning Boiler and Plant scope, generating job numbers, and issuing job QR
+codes.
 
 ## Completed Development
 
@@ -53,6 +54,9 @@ synchronizes the site into FastField's Site Info Data Table.
 - Added immutable BoilerOps public IDs for links and integrations.
 - Added automatic QR-code generation and private Supabase Storage.
 - Added site information and QR image lookup routes.
+- Added authenticated Site Management for creating and editing sites, reviewing
+  FastField sync status, regenerating QR codes, and viewing or downloading QR
+  images.
 
 ### FastField Data Table synchronization
 
@@ -70,6 +74,9 @@ synchronizes the site into FastField's Site Info Data Table.
   3. Device Info
 - Seeded stable BoilerOps upsert keys for each table.
 - Kept API credentials outside the database in protected environment settings.
+- Added authenticated Data Table administration for editing table IDs,
+  FastField endpoints, HTTP methods, upsert keys, field mappings, and active
+  status while enforcing the three-table account limit.
 
 ### Inspection-target and safety-device modeling
 
@@ -91,6 +98,24 @@ synchronizes the site into FastField's Site Info Data Table.
 - Kept human-readable labels separate from immutable database and QR
   identifiers so labels can change without breaking links or history.
 
+### Inspection jobs and reporting foundation
+
+- Added administrator-created inspection jobs scoped to one Site and one or
+  more Boiler or Plant targets.
+- Added automatic job numbers in the approved `YYYY-####` format.
+- Added immutable BoilerOps Job IDs and stored job QR codes.
+- Added a public job lookup containing only the job, Site, and target IDs needed
+  for FastField prefill.
+- Added an authenticated job-planning interface for creating, editing, and
+  reviewing jobs and downloading or regenerating job QR codes.
+- Added a minimal target-creation path so administrators can establish job
+  scope without direct database changes.
+- Added versioned safety-test definitions and structured question records.
+- Added structured inspection answers at test or device scope.
+- Added append-only safety-device observations and inspection certifications.
+- Added versioned report-package records that can combine multiple target
+  inspections into one final client deliverable.
+
 ## Current Technical Status
 
 - The initial Site Onboarding migration has been applied.
@@ -98,6 +123,8 @@ synchronizes the site into FastField's Site Info Data Table.
   `20260814_fastfield_data_table_config.sql`.
 - The inspectable-target and inspection-history migration is ready to apply:
   `20260815_inspection_target_model.sql`.
+- The operational workflow foundation migration is ready to apply:
+  `20260816_operational_workflow_foundation.sql`.
 - TypeScript validation passes.
 - Source linting passes with no errors.
 - The Site Info synchronization code is ready for the account-specific
@@ -105,17 +132,16 @@ synchronizes the site into FastField's Site Info Data Table.
 
 ## Next Milestone
 
-Complete the Site Onboarding live test:
+Apply and validate the operational workflow:
 
 1. Apply the generic FastField Data Table configuration migration.
-2. Enter the Site Info table ID and row-upsert endpoint.
-3. Confirm `bo_siteid` is configured as the unique FastField lookup key.
-4. Submit the Site Onboarding form to the production ingestion endpoint.
-5. Verify the site record in Supabase.
-6. Verify the generated site QR code.
-7. Verify the Site Info row in FastField.
-8. Submit an update form containing `bo_siteid` and confirm the existing site is
-   updated rather than duplicated.
+2. Apply the inspection-target migration.
+3. Apply the operational workflow foundation migration.
+4. Create Boiler and Plant targets for a test Site.
+5. Create an inspection job and confirm its `YYYY-####` number.
+6. Verify the job QR image and public job lookup payload.
+7. Test Job QR prefill and hidden ID persistence in a blank FastField form.
+8. Complete the existing live Site Info synchronization test.
 
 ## Subsequent Development
 
@@ -124,8 +150,11 @@ After Site Onboarding is validated:
 - Update target onboarding to select an existing site using `bo_siteid`.
 - Validate Inspection Info and Device Info column names and payloads.
 - Implement hierarchical human-readable labels such as `CAP-BLR1-WL1`.
+- Generate the technician job-summary PDF containing job and permanent asset
+  QR codes.
+- Validate submitted Job, Site, target, and Device IDs against planned scope.
 - Map all production safety-test sections from the final inspection form.
-- Add report and attachment synchronization.
+- Build the consolidated report renderer on the versioned report-package model.
 - Add portal views for sites, boilers, devices, inspection history, and reports.
 
 ## Dependencies and Decisions Needed
@@ -137,6 +166,8 @@ After Site Onboarding is validated:
   production release.
 - Finalize boiler and device code-generation rules, including duplicate and
   replacement-device handling.
+- Confirm the final FastField question keys and repeating-section behavior
+  before seeding production test-definition versions.
 
 ## Development Log
 
@@ -151,3 +182,11 @@ After Site Onboarding is validated:
 - Added the Boiler/Plant inspection-target model and device relationships.
 - Documented the proposed relational model for boilers, safety tests, and
   safety devices.
+
+### August 15, 2026
+
+- Added the inspection-job, test-answer, observation, certification, and
+  report-package schema foundation.
+- Implemented automatic `YYYY-####` job numbering.
+- Added inspection-job administration, target assignment, and job QR handling.
+- Added public job lookup JSON for the upcoming FastField QR-prefill test.

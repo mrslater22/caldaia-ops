@@ -5,18 +5,29 @@ import {
   qrObjectPath,
 } from "@/lib/supabase/storage";
 
-export function siteQrTargetUrl(publicId: string): string {
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
-    "http://localhost:3000";
-  return `${appUrl}/i/site/${encodeURIComponent(publicId)}`;
+function appUrl(): string {
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  if (configuredUrl) return configuredUrl;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("NEXT_PUBLIC_APP_URL is required for production QR codes.");
+  }
+  return "http://localhost:3000";
 }
 
-export async function generateAndStoreSiteQr(
+export function siteQrTargetUrl(publicId: string): string {
+  return `${appUrl()}/i/site/${encodeURIComponent(publicId)}`;
+}
+
+export function jobQrTargetUrl(publicId: string): string {
+  return `${appUrl()}/i/job/${encodeURIComponent(publicId)}`;
+}
+
+async function generateAndStoreQr(
   publicId: string,
+  kind: "site" | "job",
+  targetUrl: string,
 ): Promise<{ targetUrl: string; storagePath: string }> {
-  const targetUrl = siteQrTargetUrl(publicId);
-  const storagePath = qrObjectPath("site", publicId);
+  const storagePath = qrObjectPath(kind, publicId);
   const png = await QRCode.toBuffer(targetUrl, {
     type: "png",
     width: 512,
@@ -34,8 +45,20 @@ export async function generateAndStoreSiteQr(
     });
 
   if (error) {
-    throw new Error(`Failed to store site QR code: ${error.message}`);
+    throw new Error(`Failed to store ${kind} QR code: ${error.message}`);
   }
 
   return { targetUrl, storagePath };
+}
+
+export async function generateAndStoreSiteQr(
+  publicId: string,
+): Promise<{ targetUrl: string; storagePath: string }> {
+  return generateAndStoreQr(publicId, "site", siteQrTargetUrl(publicId));
+}
+
+export async function generateAndStoreJobQr(
+  publicId: string,
+): Promise<{ targetUrl: string; storagePath: string }> {
+  return generateAndStoreQr(publicId, "job", jobQrTargetUrl(publicId));
 }

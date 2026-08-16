@@ -99,3 +99,19 @@ Document during Sprint 0:
 - Device tables / repeating sections
 - Required vs optional fields
 - Known data quality issues (manufacturer spelling variance, etc.)
+
+## Admin Data Table configuration
+
+Authenticated administrators can open `/admin/fastfield-data-tables` to manage
+the three FastField Data Table configurations:
+
+1. Site Info
+2. Inspection Info
+3. Device Info
+
+The page manages table IDs, row endpoints, HTTP methods, stable upsert keys,
+field mappings, and active status. FastField credentials remain in protected
+application environment variables and are never returned by the admin API.
+
+Configurations cannot be deleted through the UI because synchronization history
+references them. Deactivate a configuration instead.

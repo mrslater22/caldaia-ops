@@ -160,6 +160,7 @@ export default function FastFieldFormsAdminPage() {
               onChange={(e) => setPurpose(e.target.value)}
               className="w-full rounded-md border border-border px-3 py-2"
             >
+              <option value="site_onboarding">site_onboarding</option>
               <option value="boiler_onboarding">boiler_onboarding</option>
             </select>
           </label>
