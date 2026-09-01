@@ -22,7 +22,7 @@ const DEFAULT_MAPPINGS = `{
   "manufacturer": "boiler_manufacturer",
   "model": "boiler_model",
   "serial_number": "boiler_serial",
-  "devices": "devices"
+  "assets": "assets"
 }`;
 
 export default function FastFieldFormsAdminPage() {

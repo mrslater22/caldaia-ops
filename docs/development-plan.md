@@ -12,13 +12,13 @@ BoilerOps is the foundation of a multi-tenant SaaS platform for industrial boile
 ### Near-term goals
 
 1. Receive inspection data from FastField into an operational database
-2. Maintain a living inventory of plant safety devices
+2. Maintain a living inventory of installed safety and measurement assets
 3. Plan inspection jobs and generate field-technician job packets with QR codes
-4. Store test results and observations at the physical-device level
+4. Store test results and observations at the physical-asset level
 5. Assemble Boiler and Plant submissions into one final client report package
 6. Store inspection reports and expose them through a client portal
 7. Add support-ticket workflows
-8. Enrich each device with AI-generated replacement intelligence
+8. Enrich each asset with AI-generated replacement intelligence
 9. Lay groundwork for predictive maintenance, procurement intelligence, and operational analytics
 
 ### Long-term vision
@@ -30,7 +30,7 @@ Multi-tenant SaaS for industrial boiler operations, compliance, inventory intell
 | Layer | System | Role |
 | --- | --- | --- |
 | Field execution | FastField | Blank mobile forms, offline use, QR scanning, test collection |
-| System of record | BoilerOps | Sites, assets, inspection jobs, device history, final report packages, portal, tickets, AI, analytics |
+| System of record | BoilerOps | Sites, assets, inspection jobs, asset history, final report packages, portal, tickets, AI, analytics |
 
 Do **not** replace FastField in Phase 1. Keep it as the field collection layer; BoilerOps owns durable operational data.
 
@@ -51,20 +51,20 @@ Do **not** replace FastField in Phase 1. Keep it as the field collection layer; 
 | Ticketing | In-platform first; Zendesk/Freshdesk later optional |
 | Search | Postgres full text first; OpenSearch only if needed |
 
-**Why:** Modern SaaS shape, strong relational fit for plant/device/inspection graphs, durable documents in the same Supabase project (Postgres + Storage), durable job processing, and no AI vendor lock-in.
+**Why:** Modern SaaS shape, strong relational fit for plant/asset/inspection graphs, durable documents in the same Supabase project (Postgres + Storage), durable job processing, and no AI vendor lock-in.
 
 ## 3. Platform modules
 
 ### Phase 1
 
 - **FastField Integration Layer** — ingest, normalize, Postgres + Supabase Storage
-- **Operational Data Core** — sites, inspectable Plant/Boiler targets, devices, inspection jobs, tests, findings, documents
-- **Asset Onboarding + Administration** — Site, Inspection Target, and Device management with permanent QR codes
-- **Inspection Job Planning** — job number, target/device/test scope, technician packet, job QR
-- **Device-Level History** — append-only observations and test results across jobs
+- **Operational Data Core** — sites, inspectable Plant/Boiler targets, assets, inspection jobs, tests, findings, documents
+- **Asset Onboarding + Administration** — Site, Inspection Target, and Asset management with permanent QR codes
+- **Inspection Job Planning** — job number, target/asset/test scope, technician packet, job QR
+- **Asset-Level History** — append-only observations and test results across jobs
 - **Report Package Builder** — combine multiple Boiler and Plant inspections into one versioned client report
 - **Client Portal v1** — login, reports, inventory, tickets
-- **AI Device Intelligence Worker** — normalize names, life expectancy, vendors, price/lead time, replacements
+- **AI Asset Intelligence Worker** — normalize names, life expectancy, vendors, price/lead time, replacements
 
 ### Phase 2
 
@@ -80,17 +80,17 @@ Do **not** replace FastField in Phase 1. Keep it as the field collection layer; 
 
 ```
 Administrator → create inspection job → generate job_num + scoped job packet
-  → Job QR + permanent Site / Plant / Boiler / Device QR codes
+  → Job QR + permanent Site / Plant / Boiler / Asset QR codes
 Technician → blank FastField form → scan Job QR → scan permanent asset QRs
   → FastField webhook/direct-post → /api/fastfield/submissions
   → raw payload (immutable) → BullMQ jobs
-  → validate job/site/target/device scan chain
-  → map tests and observations to physical devices → upsert Postgres
+  → validate job/site/target/asset scan chain
+  → map tests and observations to physical assets → upsert Postgres
   → combine completed target inspections → versioned final report package
   → sync PDF/media → Supabase Storage
-  → enqueue AI enrichment (new/changed devices)
+  → enqueue AI enrichment (new/changed assets)
   → Client Portal (reports, inventory, tickets)
-  → Weekly refresh of device intelligence
+  → Weekly refresh of asset intelligence
 ```
 
 ### Inspection job and report-package workflow
@@ -99,21 +99,21 @@ Technician → blank FastField form → scan Job QR → scan permanent asset QRs
 2. BoilerOps generates the immutable job identity and human-readable
    `job_num`.
 3. The administrator selects the Site, Plant and Boiler targets, required
-   devices, and expected safety tests.
+   assets, and expected safety tests.
 4. BoilerOps produces a job-summary document containing:
    - Job QR code
    - Permanent Site QR code
    - Permanent Plant and Boiler QR codes
-   - Permanent Device QR codes grouped beneath their targets
+   - Permanent Asset QR codes grouped beneath their targets
 5. The technician launches a blank FastField form and scans in this order:
    - Job QR
    - Site QR
    - Plant or Boiler target QR
-   - Applicable Device QRs inside the test sections
+   - Applicable Asset QRs inside the test sections
 6. FastField stores hidden BoilerOps IDs with the form and submits the completed
    target inspection.
 7. BoilerOps verifies that every scanned entity belongs to the open job scope.
-8. Device results are stored against the physical device and retained
+8. Asset results are stored against the physical asset and retained
    historically.
 9. A typical medical-center package tracks approximately three Boiler
    inspections and one Plant inspection.
@@ -132,8 +132,8 @@ admin workflow now provide:
 - Inspection jobs scoped to one Site and one or more Boiler/Plant targets
 - Job QR generation, private storage, public lookup, and administration
 - Versioned safety-test definitions and typed question metadata
-- Structured test-level and device-level answers
-- Append-only device observations and inspection certifications
+- Structured test-level and asset-level answers
+- Append-only asset observations and inspection certifications
 - Versioned report-package records that can include multiple inspections
 
 The current working slice stops before technician job-summary PDF generation,
@@ -160,13 +160,13 @@ Public FastField capabilities (offline forms, dispatch, QR/barcode/NFC, caching,
 Validate before production rollout:
 
 - [x] Exact Site and Boiler Onboarding webhook payload structures
-- [ ] Exact Plant, Device, Boiler Inspection, and Plant Inspection payload structures
+- [ ] Exact Plant, Asset, Boiler Inspection, and Plant Inspection payload structures
 - [ ] Auth model for API endpoints
 - [ ] PDF retrieval via API vs workflow-only delivery
 - [ ] Whether edits emit update events
 - [ ] Document ID / submission ID exposure
 - [ ] Blank-form QR scan → Data Table lookup → multi-field prefill
-- [ ] Repeating-section behavior when multiple Device QRs are scanned
+- [ ] Repeating-section behavior when multiple Asset QRs are scanned
 - [ ] Job QR prefill behavior and hidden BoilerOps ID persistence
 - [ ] Programmatic Data Table row create/update/upsert API
 - [ ] Programmatic refresh of cached Data Tables
@@ -181,7 +181,7 @@ See [fastfield-integration.md](./fastfield-integration.md).
 - Caldaia Controls = platform operator tenant
 - Each client organization = tenant
 - Sites belong to a client tenant
-- Inspectable Plant/Boiler targets and physical devices belong to Sites
+- Inspectable Plant/Boiler targets and physical assets belong to Sites
 - Inspection jobs and report packages are scoped to one Site and tenant
 - **RLS enforced in Supabase**
 
@@ -198,11 +198,11 @@ inventory. Internal roles see across tenants by permission.
 **In MVP**
 
 - FastField submission ingestion
-- Site, Plant/Boiler target, and Device onboarding
+- Site, Plant/Boiler target, and Asset onboarding
 - Administrator-created inspection jobs and generated job numbers
 - Job-summary document with Job and permanent asset QR codes
-- Normalized inspection, test-section, and device-level result storage
-- Historical observations for every physical safety device
+- Normalized inspection, test-section, and asset-level result storage
+- Historical observations for every physical safety or measurement asset
 - Validation of submitted IDs against the planned job scope
 - Consolidated, versioned report package built from multiple target submissions
 - Supabase Storage–backed report storage
@@ -210,16 +210,16 @@ inventory. Internal roles see across tenants by permission.
 - Reports browser/download
 - Site and asset inventory browser
 - Support tickets
-- Initial AI device intelligence on a **limited** device class set (2–4 categories)
+- Initial AI asset intelligence on a **limited** asset class set (2–4 categories)
 
 **Out of MVP**
 
 - Full predictive maintenance engine
 - Advanced procurement analytics
-- Broad vendor automation across all device classes
+- Broad vendor automation across all asset classes
 - Replacement of FastField as the field-form platform
 
-### Device intelligence MVP focus
+### Asset intelligence MVP focus
 
 Start with 2–4 of:
 
@@ -237,10 +237,10 @@ Make catalog quality excellent before expanding.
 | Phase | Goals | Key deliverables |
 | --- | --- | --- |
 | **Sprint 0** | Validate FastField forms, QR/Data Table behavior, taxonomy, and account API | Integration matrix, captured payloads, mapping specs, role matrix |
-| **Phase 1** | Asset system of record | Site/target/device schema, onboarding, permanent QRs, ingestion, admin management |
-| **Phase 2** | Inspection jobs + reporting | Job planning, job QR, field packet, scan validation, device history, consolidated report builder |
+| **Phase 1** | Asset system of record | Site/target/asset schema, onboarding, permanent QRs, ingestion, admin management |
+| **Phase 2** | Inspection jobs + reporting | Job planning, job QR, field packet, scan validation, asset history, consolidated report builder |
 | **Phase 3** | Client portal v1 | Auth, RLS, reports, inventory, tickets |
-| **Phase 4** | AI device intelligence | Catalog, enrichment workers, review queue, portal recommendations |
+| **Phase 4** | AI asset intelligence | Catalog, enrichment workers, review queue, portal recommendations |
 | **Phase 5** | Predictive + procurement | Scoring, stocking, EOL forecast, multi-site analytics |
 
 ### Cursor build order
@@ -251,19 +251,19 @@ Make catalog quality excellent before expanding.
 4. Raw event logging + idempotency
 5. Site onboarding + administration + permanent Site QR
 6. Plant/Boiler inspection-target onboarding + permanent target QRs
-7. Device onboarding + permanent Device QRs
-8. FastField Site/Inspection/Device Data Table synchronization
+7. Asset onboarding + permanent Asset QRs
+8. FastField Site/Inspection/Asset Data Table synchronization
 9. Inspection-job schema + admin planning workflow
 10. Job number + Job QR + technician job-summary document
 11. Blank-form QR prefill workflow validation
-12. Inspection/test/device-history mapper
+12. Inspection/test/asset-history mapper
 13. Job completeness tracking + consolidated report builder
 14. Supabase Storage document versioning
 15. Admin inspection review and reconciliation
 16. Portal auth + tenant access
 17. Reports, inventory, and ticketing pages
 18. Worker queue + job dashboard
-19. Device normalization and AI enrichment
+19. Asset normalization and AI enrichment
 20. Vendor options, analytics, and inventory planning
 
 Ready-to-run implementation prompts: [implementation-prompts.md](./implementation-prompts.md).
@@ -282,9 +282,9 @@ Ready-to-run implementation prompts: [implementation-prompts.md](./implementatio
 10. Design every module for future multi-client SaaS expansion
 11. Keep permanent asset QRs separate from inspection-specific Job QRs
 12. Store stable BoilerOps IDs in hidden FastField fields
-13. Reject or quarantine submissions whose Site, target, or Device IDs are not
+13. Reject or quarantine submissions whose Site, target, or Asset IDs are not
     part of the referenced inspection job
-14. Store device observations append-only; do not rebuild history from the
+14. Store asset observations append-only; do not rebuild history from the
     current inventory record
 15. Version generated job summaries and final report packages
 
@@ -300,7 +300,7 @@ Ready-to-run implementation prompts: [implementation-prompts.md](./implementatio
 | Inconsistent manufacturer/model names | Normalization + review queue + aliases |
 | AI hallucinated vendor/replacement data | Source-backed structured output + confidence + human approval |
 | Portal document access security | Signed URLs + RLS + tenant isolation + audit logs |
-| Device history corruption from re-imports | Idempotency keys + snapshots + append-only history |
+| Asset history corruption from re-imports | Idempotency keys + snapshots + append-only history |
 | Portal sprawl too early | Keep v1 to reports, inventory, tickets |
 
 ## 11. Definition of success
@@ -310,19 +310,19 @@ Ready-to-run implementation prompts: [implementation-prompts.md](./implementatio
 - Inspection data reaches BoilerOps automatically
 - Administrators create jobs and issue QR-based technician packets
 - Boiler and Plant forms are validated against their planned job scope
-- Device-level results and observations remain historically accessible
+- Asset-level results and observations remain historically accessible
 - Approximately three Boiler inspections and one Plant inspection can be
   assembled into one versioned client report without manual merging
 - Every final inspection report package is visible in the client portal
-- Every Site has a living target and device inventory
+- Every Site has a living target and asset inventory
 - Clients self-serve reports and inventory
-- Support requests tied to plants and devices
+- Support requests tied to plants and assets
 - Caldaia owns the historical data layer
 
 **After Phase 3**
 
-- Project leads see replacement options when a device fails
-- Device data enriched weekly
+- Project leads see replacement options when an asset fails
+- Asset data enriched weekly
 - Caldaia can identify parts worth stocking
 - BoilerOps becomes a differentiated intelligence platform
 
@@ -335,7 +335,7 @@ Ready-to-run implementation prompts: [implementation-prompts.md](./implementatio
 | [fastfield-integration.md](./fastfield-integration.md) | Ingestion options, Sprint 0 checklist |
 | [fastfield-submission-implementation-pattern.md](./fastfield-submission-implementation-pattern.md) | Repeatable form-ingestion implementation pattern |
 | [api-contracts.md](./api-contracts.md) | Planned endpoints |
-| [ai-device-intelligence.md](./ai-device-intelligence.md) | AI pipeline and guardrails |
+| [ai-asset-intelligence.md](./ai-asset-intelligence.md) | AI pipeline and guardrails |
 | [portal-scope.md](./portal-scope.md) | Portal v1/v2 pages and workflows |
 | [implementation-prompts.md](./implementation-prompts.md) | Cursor build prompts |
 | [runbooks/README.md](./runbooks/README.md) | Operational runbooks (stub) |

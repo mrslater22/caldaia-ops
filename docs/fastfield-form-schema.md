@@ -1,6 +1,6 @@
 # Getting FastField Form ID + Schema
 
-Yes — BoilerOps should know **which form** submitted and **how its fields map** to boilers/devices.
+Yes — BoilerOps should know **which form** submitted and **how its fields map** to boilers/assets.
 
 ## What we store
 
@@ -10,7 +10,7 @@ In `fastfield_forms`:
 | --- | --- |
 | `fastfield_form_id` | FastField’s form ID |
 | `name` | Human label (e.g. Boiler Onboarding) |
-| `purpose` | Processor key (`boiler_onboarding`, later `device_test`, …) |
+| `purpose` | Processor key (`boiler_onboarding`, later `asset_test`, …) |
 | `schema_json` | Field definition / export from FastField |
 | `field_mappings_json` | Map FastField keys → BoilerOps fields |
 
@@ -59,7 +59,7 @@ API key: FastField portal → profile / account / API settings (wording varies b
   "fields": [
     { "key": "facility_name", "label": "Facility Name", "type": "text" },
     { "key": "boiler_tag", "label": "Boiler Tag", "type": "text" },
-    { "key": "devices", "label": "Safety Devices", "type": "table" }
+    { "key": "assets", "label": "Installed Assets", "type": "table" }
   ]
 }
 ```
@@ -82,7 +82,7 @@ API key: FastField portal → profile / account / API settings (wording varies b
   "manufacturer": "boiler_manufacturer",
   "model": "boiler_model",
   "serial_number": "boiler_serial",
-  "devices": "safety_devices"
+  "assets": "assets"
 }
 ```
 

@@ -12,7 +12,7 @@ export async function GET() {
     endpoint: "/api/fastfield/sample",
     methods: ["POST"],
     purpose:
-      "Capture a raw FastField payload for form mapping. Does not create boilers or devices.",
+      "Capture a raw FastField payload for form mapping. Does not create boilers or assets.",
     view: "/admin/fastfield-sample",
   });
 }

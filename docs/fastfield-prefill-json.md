@@ -3,7 +3,7 @@
 QR codes encode these URLs (FastField / scanner GETs them and expects JSON):
 
 - Boiler: `{APP_URL}/i/boiler/{public_id}`
-- Device: `{APP_URL}/i/device/{public_id}`
+- Asset: `{APP_URL}/i/asset/{public_id}`
 
 ## Boiler response
 
@@ -30,10 +30,14 @@ QR codes encode these URLs (FastField / scanner GETs them and expects JSON):
     "notes": null,
     "onboarded_at": null
   },
-  "devices": [
+  "assets": [
     {
-      "public_id": "dev_…",
-      "device_type": "PSV",
+      "public_id": "asset_…",
+      "asset_code": "SV1",
+      "asset_category": "safety",
+      "asset_classification": "Steam Safety Valve",
+      "asset_nomenclature": "SVB",
+      "asset_name": "Boiler Steam Safety Valve",
       "manufacturer": null,
       "model": null,
       "serial_number": null,
@@ -44,17 +48,18 @@ QR codes encode these URLs (FastField / scanner GETs them and expects JSON):
 }
 ```
 
-## Device response
+## Asset response
 
 ```json
 {
   "ok": true,
-  "resource": "device",
-  "public_id": "dev_…",
-  "device": { "…device fields…" },
+  "resource": "asset",
+  "public_id": "asset_…",
+  "asset": { "…asset fields…" },
+  "inspection_target": null,
   "boiler": { "…parent boiler fields…" },
-  "last_test": {
-    "tested_at": "2026-07-01T12:00:00Z",
+  "last_observation": {
+    "observed_at": "2026-07-01T12:00:00Z",
     "technician_name": null,
     "result": null,
     "notes": null,
@@ -63,12 +68,12 @@ QR codes encode these URLs (FastField / scanner GETs them and expects JSON):
 }
 ```
 
-`last_test` is `null` when no prior test exists.
+`last_observation` is `null` when no prior observation exists.
 
 ## Error shape
 
 ```json
-{ "ok": false, "error": "Device not found." }
+{ "ok": false, "error": "Asset not found." }
 ```
 
 ## Setup checklist

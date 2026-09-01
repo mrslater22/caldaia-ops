@@ -28,11 +28,11 @@ Contracts to implement across phases. Auth: Supabase session for portal; shared 
 | GET | `/api/plants` | List plants for tenant |
 | GET | `/api/plants/:id` | Plant detail (public or internal id strategy TBD; prefer public id) |
 | GET | `/api/plants/:id/inspections` | Inspection history |
-| GET | `/api/plants/:id/devices` | Current safety-device inventory |
+| GET | `/api/plants/:id/assets` | Current safety and measurement asset inventory |
 | GET | `/api/inspections/:id` | Inspection detail |
 | GET | `/api/inspections/:id/report` | Signed URL / download for report |
-| GET | `/api/devices/:id` | Device detail |
-| GET | `/api/devices/:id/recommendations` | AI recommendations + vendor options |
+| GET | `/api/assets/:id` | Asset detail |
+| GET | `/api/assets/:id/recommendations` | AI recommendations + vendor options |
 | GET | `/api/tickets` | List tickets |
 | POST | `/api/tickets` | Create ticket |
 | POST | `/api/tickets/:id/messages` | Add message |
@@ -43,8 +43,8 @@ All portal routes enforce tenant isolation (RLS + app checks).
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/internal/device-review-queue` | Low-confidence catalog matches |
-| POST | `/api/internal/device-review-queue/:id/approve` | Approve/override match |
+| GET | `/api/internal/asset-review-queue` | Low-confidence catalog matches |
+| POST | `/api/internal/asset-review-queue/:id/approve` | Approve/override match |
 | GET | `/api/internal/inventory-recommendations` | Stocking candidates |
 
 ## Phase 4 (planned)

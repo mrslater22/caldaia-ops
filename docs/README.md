@@ -8,7 +8,7 @@
 | [fastfield-submission-implementation-pattern.md](./fastfield-submission-implementation-pattern.md) | Repeatable Site Onboarding implementation pattern for future forms |
 | [data-dictionary.md](./data-dictionary.md) | Domain entities |
 | [api-contracts.md](./api-contracts.md) | Planned endpoints |
-| [ai-device-intelligence.md](./ai-device-intelligence.md) | Enrichment pipeline |
+| [ai-asset-intelligence.md](./ai-asset-intelligence.md) | Enrichment pipeline |
 | [portal-scope.md](./portal-scope.md) | Portal + tickets |
 | [implementation-prompts.md](./implementation-prompts.md) | Cursor build prompts |
 | [runbooks/](./runbooks/) | Operational runbooks |

@@ -20,9 +20,13 @@ export type BoilerPrefillPayload = {
     notes: string | null;
     onboarded_at: string | null;
   };
-  devices: Array<{
+  assets: Array<{
     public_id: string;
-    device_type: string;
+    asset_code: string | null;
+    asset_category: "safety" | "measurement";
+    asset_classification: string;
+    asset_nomenclature: string | null;
+    asset_name: string | null;
     manufacturer: string | null;
     model: string | null;
     serial_number: string | null;
@@ -31,14 +35,17 @@ export type BoilerPrefillPayload = {
   }>;
 };
 
-export type DevicePrefillPayload = {
+export type AssetPrefillPayload = {
   ok: true;
-  resource: "device";
+  resource: "asset";
   public_id: string;
-  device: {
+  asset: {
     public_id: string;
-    device_type: string;
-    equipment_group: string | null;
+    asset_code: string | null;
+    asset_category: "safety" | "measurement";
+    asset_classification: string;
+    asset_nomenclature: string | null;
+    asset_name: string | null;
     manufacturer: string | null;
     model: string | null;
     serial_number: string | null;
@@ -48,6 +55,14 @@ export type DevicePrefillPayload = {
     location_description: string | null;
     service_status: string;
   };
+  inspection_target: {
+    public_id: string;
+    target_type: "boiler" | "plant";
+    target_code: string;
+    display_name: string;
+    location_description: string | null;
+    service_status: string;
+  } | null;
   boiler: {
     public_id: string;
     facility_name: string;
@@ -56,9 +71,9 @@ export type DevicePrefillPayload = {
     manufacturer: string | null;
     model: string | null;
     serial_number: string | null;
-  };
-  last_test: {
-    tested_at: string;
+  } | null;
+  last_observation: {
+    observed_at: string;
     technician_name: string | null;
     result: string | null;
     notes: string | null;

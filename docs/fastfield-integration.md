@@ -17,13 +17,13 @@ FastField completion
   → queue ingest_fastfield_submission
   → map_submission_to_domain
   → sync_report_document (Supabase Storage)
-  → optional AI jobs for new/changed devices
+  → optional AI jobs for new/changed assets
 ```
 
 ### Why preferred
 
 - Near real-time portal updates
-- Better for alerting and failed-device workflows
+- Better for alerting and failed-asset workflows
 - Cleaner automation surface
 
 ## Fallback + safety net: scheduled pull
@@ -41,8 +41,8 @@ If webhook coverage is incomplete, or always as reconciliation:
 | Job | Purpose |
 | --- | --- |
 | `ingest_fastfield_submission` | Accept event, persist raw, kick mapping |
-| `map_submission_to_domain` | Map to inspection, findings, devices, history |
-| `extract_devices_from_submission` | Device upsert + change detection |
+| `map_submission_to_domain` | Map to inspection, findings, assets, history |
+| `extract_assets_from_submission` | Asset upsert + change detection |
 | `sync_report_document` | Fetch/copy PDF + attachments to Supabase Storage |
 | (reconciliation) | Cursor-based pull / nightly drift correction |
 
@@ -52,8 +52,8 @@ Each validated submission should produce or update:
 
 - `inspections` (keyed by `fastfield_submission_id`)
 - `inspection_findings`
-- `safety_devices` (current inventory upsert)
-- `safety_device_history` (append snapshot)
+- `assets` (current inventory upsert)
+- `asset_observations` (append snapshot)
 - `documents` metadata + Supabase Storage objects
 - `technicians` (if user identity present)
 
@@ -96,7 +96,7 @@ Document during Sprint 0:
 - Form names / FastField form IDs
 - Inspection types
 - Report templates
-- Device tables / repeating sections
+- Asset tables / repeating sections
 - Required vs optional fields
 - Known data quality issues (manufacturer spelling variance, etc.)
 
@@ -107,7 +107,7 @@ the three FastField Data Table configurations:
 
 1. Site Info
 2. Inspection Info
-3. Device Info
+3. Asset Info
 
 The page manages table IDs, row endpoints, HTTP methods, stable upsert keys,
 field mappings, and active status. FastField credentials remain in protected

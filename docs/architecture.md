@@ -16,10 +16,10 @@ BoilerOps must not depend on FastField as the long-term document or inventory st
 3. Ingestion validates auth/signature and stores the **raw** payload in `integration_events`.
 4. A BullMQ job transforms the payload into domain entities.
 5. PDF report and media are copied to Supabase Storage; metadata written to `documents`.
-6. Structured data is upserted into Postgres (inspections, findings, devices, history).
-7. New/changed devices enqueue AI enrichment jobs.
+6. Structured data is upserted into Postgres (inspections, findings, assets, history).
+7. New/changed assets enqueue AI enrichment jobs.
 8. Portal exposes reports, inventory, and tickets to clients.
-9. Weekly workers refresh device intelligence and vendor options.
+9. Weekly workers refresh asset intelligence and vendor options.
 10. Nightly reconciliation polls FastField to correct drift (even when webhooks work).
 
 ## Recommended service boundaries
@@ -71,7 +71,7 @@ boilerops/
 
 ### Postgres (Supabase)
 
-Authoritative structured data: orgs, plants, inspections, devices, tickets, catalog, AI outputs, integration events.
+Authoritative structured data: orgs, plants, inspections, assets, tickets, catalog, AI outputs, integration events.
 
 ### Supabase Storage
 
@@ -84,7 +84,7 @@ Buckets:
 | Bucket | Purpose | Public |
 | --- | --- | --- |
 | `reports` | Inspection PDFs and attachments | No — signed URLs |
-| `qr-codes` | Generated boiler/device QR PNGs (`boilers/{public_id}.png`, `devices/{public_id}.png`) | No — signed URLs / admin print |
+| `qr-codes` | Generated boiler/asset QR PNGs (`boilers/{public_id}.png`, `assets/{public_id}.png`) | No — signed URLs / admin print |
 
 SQL: `supabase/migrations/20260811_storage_buckets.sql`
 
@@ -117,8 +117,8 @@ Poll every ~15 minutes for new/updated submissions; store sync cursor; pull deta
 
 - Raw payloads in `integration_events` are append-only / immutable.
 - Reprocessing clones or references the same raw event; it does not mutate it.
-- Domain upserts key on FastField submission IDs + stable device keys.
-- `safety_device_history` is append-only snapshots — never rewrite history rows for “corrections”; add new snapshots.
+- Domain upserts key on FastField submission IDs + stable asset keys.
+- `asset_observations` is append-only — never rewrite history rows for “corrections”; add new observations.
 
 ## AI data layering (critical)
 
@@ -141,7 +141,7 @@ Flow:
 1. Scan QR → resolve plant
 2. Load latest approved inspection context + current inventory
 3. Redirect into FastField launch (prefill params) **or** dispatch task with prior data
-4. Form opens with known device details filled
+4. Form opens with known asset details filled
 
 **Rule:** Ship only after inventory normalization is trustworthy. Prefer dispatch fallback if dynamic prefill is limited.
 

@@ -8,7 +8,7 @@
 ## Executive Summary
 
 BoilerOps is being developed as the central system of record for boiler sites,
-equipment, safety devices, inspections, reports, and future operational
+equipment, safety and measurement assets, inspections, reports, and future operational
 intelligence. FastField will remain the field data-collection platform, while
 BoilerOps will manage structured records, QR-linked assets, historical data,
 client access, and integrations.
@@ -64,21 +64,21 @@ codes.
   than creating site-specific integration code for every table.
 - Added configuration for table identity, purpose, endpoint, HTTP method,
   upsert key, field mappings, and activation status.
-- Added generic synchronization records for sites, boilers, devices, and future
+- Added generic synchronization records for sites, boilers, assets, and future
   entity types.
 - Added payload hashing, external record IDs, synchronization status, attempt
   history, and error reporting.
 - Aligned the integration with FastField's three-table account limit:
   1. Site Info
   2. Inspection Info
-  3. Device Info
+  3. Asset Info
 - Seeded stable BoilerOps upsert keys for each table.
 - Kept API credentials outside the database in protected environment settings.
 - Added authenticated Data Table administration for editing table IDs,
   FastField endpoints, HTTP methods, upsert keys, field mappings, and active
   status while enforcing the three-table account limit.
 
-### Inspection-target and safety-device modeling
+### Inspection-target and asset modeling
 
 - Evaluated a representative Boiler Onboarding submission.
 - Defined Boiler and Plant as persistent inspectable target types rather than
@@ -86,10 +86,10 @@ codes.
 - Separated inspectable targets from completed inspection events.
 - Confirmed that one inspection contains multiple safety-test report sections.
 - Confirmed that each test section can contain one or more participating safety
-  devices.
+  assets.
 - Defined the intended relationship:
 
-  `Inspection → Safety Test / Report Section → Devices Tested`
+  `Inspection → Safety Test / Report Section → Assets Tested`
 
 - Established the planned human-readable asset label format:
 
@@ -111,8 +111,8 @@ codes.
 - Added a minimal target-creation path so administrators can establish job
   scope without direct database changes.
 - Added versioned safety-test definitions and structured question records.
-- Added structured inspection answers at test or device scope.
-- Added append-only safety-device observations and inspection certifications.
+- Added structured inspection answers at test or asset scope.
+- Added append-only asset observations and inspection certifications.
 - Added versioned report-package records that can combine multiple target
   inspections into one final client deliverable.
 
@@ -148,14 +148,14 @@ Apply and validate the operational workflow:
 After Site Onboarding is validated:
 
 - Update target onboarding to select an existing site using `bo_siteid`.
-- Validate Inspection Info and Device Info column names and payloads.
+- Validate Inspection Info and Asset Info column names and payloads.
 - Implement hierarchical human-readable labels such as `CAP-BLR1-WL1`.
 - Generate the technician job-summary PDF containing job and permanent asset
   QR codes.
-- Validate submitted Job, Site, target, and Device IDs against planned scope.
+- Validate submitted Job, Site, target, and Asset IDs against planned scope.
 - Map all production safety-test sections from the final inspection form.
 - Build the consolidated report renderer on the versioned report-package model.
-- Add portal views for sites, boilers, devices, inspection history, and reports.
+- Add portal views for sites, boilers, assets, inspection history, and reports.
 
 ## Dependencies and Decisions Needed
 
@@ -164,8 +164,8 @@ After Site Onboarding is validated:
 - Confirm the final Site Info Data Table column names and data types.
 - Decide what site information may be displayed through public QR links before
   production release.
-- Finalize boiler and device code-generation rules, including duplicate and
-  replacement-device handling.
+- Finalize boiler and asset code-generation rules, including duplicate and
+  replacement-asset handling.
 - Confirm the final FastField question keys and repeating-section behavior
   before seeding production test-definition versions.
 
@@ -177,11 +177,11 @@ After Site Onboarding is validated:
 - Implemented Site Onboarding persistence and QR generation.
 - Added Site Info Data Table synchronization.
 - Generalized synchronization configuration for future FastField tables.
-- Established Site Info, Inspection Info, and Device Info as the three
+- Established Site Info, Inspection Info, and Asset Info as the three
   FastField Data Tables.
-- Added the Boiler/Plant inspection-target model and device relationships.
+- Added the Boiler/Plant inspection-target model and asset relationships.
 - Documented the proposed relational model for boilers, safety tests, and
-  safety devices.
+  safety and measurement assets.
 
 ### August 15, 2026
 

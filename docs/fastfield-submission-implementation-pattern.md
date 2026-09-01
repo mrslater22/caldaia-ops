@@ -3,7 +3,7 @@
 **Reference implementation:** Site Onboarding  
 **FastField form:** `1244818` — Site Onboarding, version 10  
 **Purpose:** Provide a repeatable implementation pattern for Inspection,
-Device, and future FastField form submissions.
+Asset, and future FastField form submissions.
 
 ## 1. Responsibility Boundaries
 
@@ -327,7 +327,7 @@ canonical Supabase record.
 
 ## 14. Pattern for Implementing Another Form
 
-Use this sequence for Inspection Target, Device, and Inspection submissions.
+Use this sequence for Inspection Target, Asset, and Inspection submissions.
 
 ### Step 1: Capture a representative payload
 
@@ -412,7 +412,7 @@ Configure or implement the corresponding FastField Data Table projection:
 
 - Site Info
 - Inspection Info
-- Device Info
+- Asset Info
 
 Ensure every row contains the stable BoilerOps ID used for future updates.
 
@@ -450,21 +450,21 @@ Test:
 - FastField rows use stable `bo_targetid`.
 - A target is not a completed inspection event.
 
-### Device Info onboarding
+### Asset Info onboarding
 
-- Persistent physical devices belong in `safety_devices`.
-- Devices link to `inspection_targets`.
-- FastField rows use stable `bo_deviceid`, `bo_targetid`, and `bo_siteid`.
+- Persistent physical safety and measurement assets belong in `assets`.
+- Assets link to `inspection_targets`.
+- FastField rows use stable `bo_assetid`, `bo_targetid`, and `bo_siteid`.
 - Manufacturer/model/serial matching must not silently merge uncertain
-  physical devices.
+  physical assets.
 
 ### Inspection submission
 
 - Completed events belong in `inspections`.
 - Activated report sections belong in `inspection_tests`.
-- Devices participating in each section belong in
-  `inspection_test_devices`.
-- One test/report section may contain multiple devices.
+- Assets participating in each section belong in
+  `inspection_test_assets`.
+- One test/report section may contain multiple assets.
 - Raw attachments and report files must retain submission provenance.
 
 ## 16. Definition of Done

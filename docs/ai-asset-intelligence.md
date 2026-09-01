@@ -1,12 +1,12 @@
-# AI Device Intelligence
+# AI Asset Intelligence
 
 ## Purpose
 
-Enrich field device records with operationally useful intelligence — without overwriting field-collected truth.
+Enrich field asset records with operationally useful intelligence — without overwriting field-collected truth.
 
 ## Inputs
 
-- Device type, manufacturer, model
+- Asset category, classification, manufacturer, and model
 - Serial number (if available)
 - Install date
 - Plant context
@@ -28,7 +28,7 @@ Enrich field device records with operationally useful intelligence — without o
 ## Worker pipeline
 
 1. **Normalize** — clean manufacturer/model variations into canonical identities  
-2. **Catalog match** — match to `device_catalog` with confidence  
+2. **Catalog match** — match to `asset_catalog` with confidence
 3. **Research** — AI worker + vendor/source retrieval → structured records  
 4. **Human-review gate** — low-confidence matches enter review queue  
 5. **Weekly refresh** — pricing, lead times, availability  
@@ -37,7 +37,7 @@ Enrich field device records with operationally useful intelligence — without o
 
 | Service | Role |
 | --- | --- |
-| `device-normalizer` | Canonical naming |
+| `asset-normalizer` | Canonical naming |
 | `catalog-matcher` | Match + confidence |
 | `vendor-researcher` | Options, price, lead time |
 | `replacement-recommender` | Guidance + urgency |
@@ -45,12 +45,12 @@ Enrich field device records with operationally useful intelligence — without o
 
 ## Job types
 
-- `refresh_device_intelligence`
+- `refresh_asset_intelligence`
 - `refresh_vendor_options`
 - `generate_replacement_recommendation`
 - `recompute_stocking_candidates`
 
-(Plus ingestion jobs that may enqueue these when devices change.)
+(Plus ingestion jobs that may enqueue these when assets change.)
 
 ## Guardrails
 

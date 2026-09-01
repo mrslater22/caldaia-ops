@@ -71,7 +71,7 @@ export default function FastFieldSamplePage() {
           <p className="mt-1 max-w-2xl text-sm text-muted">
             Point your test form&apos;s HTTP/HTTPS delivery at this URL, submit
             once, then refresh. This only stores raw JSON — it does not create
-            boilers or devices.
+            boilers or assets.
           </p>
         </div>
         <Link href="/admin" className="text-sm text-accent hover:underline">

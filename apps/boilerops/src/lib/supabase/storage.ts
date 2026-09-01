@@ -5,7 +5,7 @@ export const QR_CODES_BUCKET =
   process.env.SUPABASE_QR_BUCKET ?? "qr-codes";
 
 export function qrObjectPath(
-  kind: "site" | "job" | "target" | "boiler" | "device",
+  kind: "site" | "job" | "target" | "boiler" | "asset",
   publicId: string,
 ): string {
   const folder =
@@ -17,6 +17,6 @@ export function qrObjectPath(
           ? "targets"
           : kind === "boiler"
             ? "boilers"
-            : "devices";
+            : "assets";
   return `${folder}/${publicId}.png`;
 }

@@ -34,7 +34,7 @@ const PURPOSES = [
     label: "Inspection Info",
     upsertKey: "bo_targetid",
   },
-  { value: "device_info", label: "Device Info", upsertKey: "bo_deviceid" },
+  { value: "asset_info", label: "Asset Info", upsertKey: "bo_assetid" },
 ];
 
 const DEFAULT_MAPPINGS: Record<string, Record<string, string>> = {
@@ -54,12 +54,15 @@ const DEFAULT_MAPPINGS: Record<string, Record<string, string>> = {
     inspection_code: "target_code",
     inspection_name: "display_name",
   },
-  device_info: {
-    bo_deviceid: "public_id",
+  asset_info: {
+    bo_assetid: "public_id",
     bo_targetid: "inspection_target.public_id",
     bo_siteid: "inspection_target.site.public_id",
-    device_code: "device_code",
-    device_type: "device_type",
+    asset_code: "asset_code",
+    asset_category: "asset_category",
+    asset_classification: "asset_classification",
+    asset_nomenclature: "asset_nomenclature",
+    asset_name: "asset_name",
     manufacturer: "manufacturer",
     model: "model",
     serial_number: "serial_number",

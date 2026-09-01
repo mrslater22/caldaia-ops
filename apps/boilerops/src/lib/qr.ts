@@ -22,9 +22,13 @@ export function jobQrTargetUrl(publicId: string): string {
   return `${appUrl()}/i/job/${encodeURIComponent(publicId)}`;
 }
 
+export function assetQrTargetUrl(publicId: string): string {
+  return `${appUrl()}/i/asset/${encodeURIComponent(publicId)}`;
+}
+
 async function generateAndStoreQr(
   publicId: string,
-  kind: "site" | "job",
+  kind: "site" | "job" | "asset",
   targetUrl: string,
 ): Promise<{ targetUrl: string; storagePath: string }> {
   const storagePath = qrObjectPath(kind, publicId);
@@ -61,4 +65,10 @@ export async function generateAndStoreJobQr(
   publicId: string,
 ): Promise<{ targetUrl: string; storagePath: string }> {
   return generateAndStoreQr(publicId, "job", jobQrTargetUrl(publicId));
+}
+
+export async function generateAndStoreAssetQr(
+  publicId: string,
+): Promise<{ targetUrl: string; storagePath: string }> {
+  return generateAndStoreQr(publicId, "asset", assetQrTargetUrl(publicId));
 }

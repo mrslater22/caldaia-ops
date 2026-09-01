@@ -119,16 +119,20 @@ One inspection event.
 | status | |
 | created_at | |
 
-## safety_devices
+## assets
 
-Current physical device installed on an inspectable Boiler or Plant target.
+Current physical safety or measurement asset installed on an inspectable Boiler
+or Plant target.
 
 | Field | Notes |
 | --- | --- |
 | id | PK |
 | inspection_target_id | FK → inspection_targets |
-| device_code | Human code such as `WL1` |
-| device_type | |
+| asset_code | Human code such as `WL1` |
+| asset_category | `safety` or `measurement` |
+| asset_classification | Functional family |
+| asset_nomenclature | Client or VA nomenclature |
+| asset_name | Human-readable installed asset name |
 | manufacturer | Field-collected |
 | model | Field-collected |
 | serial_number | |
@@ -136,7 +140,7 @@ Current physical device installed on an inspectable Boiler or Plant target.
 | set_point / trip_point | |
 | service_status | |
 | location_description | |
-| normalized_device_key | Link toward catalog |
+| normalized_asset_key | Link toward catalog |
 | created_at / updated_at | |
 
 ## safety_test_definitions / safety_test_definition_versions / safety_test_questions
@@ -147,28 +151,27 @@ Current physical device installed on an inspectable Boiler or Plant target.
   schema, and report configuration used at a point in time.
 - `safety_test_questions` defines ordered, typed questions for one definition
   version and identifies whether each answer belongs to the test section or a
-  participating device.
+  participating asset.
 
-## inspection_tests / inspection_test_devices / inspection_test_answers
+## inspection_tests / inspection_test_assets / inspection_test_answers
 
 - `inspection_tests` is one activated test/report section during an inspection.
-- `inspection_test_devices` links all devices tested in that section.
+- `inspection_test_assets` links all assets tested in that section.
 - `inspection_test_answers` stores typed JSON answers against the exact
-  definition version and question. Device-scoped answers include a
-  `safety_device_id`.
+  definition version and question. Asset-scoped answers include an `asset_id`.
 
 This produces the hierarchy:
 
-`Inspection → Versioned Safety Test / Report Section → Questions + Devices`
+`Inspection → Versioned Safety Test / Report Section → Questions + Assets`
 
-## safety_device_observations
+## asset_observations
 
 Append-only snapshots across inspections.
 
 | Field | Notes |
 | --- | --- |
 | id | PK |
-| safety_device_id | FK → safety_devices |
+| asset_id | FK → assets |
 | inspection_id | FK → inspections |
 | manufacturer, model, serial_number | Observed values |
 | install_date, set_point, trip_point | |
@@ -220,7 +223,7 @@ package version.
 
 Support workflow.
 
-**tickets:** organization_id, site_id, submitted_by_user_id, assigned_to_user_id, subject, description, priority, status, related_device_id, related_inspection_id, timestamps.
+**tickets:** organization_id, site_id, submitted_by_user_id, assigned_to_user_id, subject, description, priority, status, related_asset_id, related_inspection_id, timestamps.
 
 **ticket_messages:** ticket_id, author_user_id, body, internal_only, created_at.
 
@@ -236,29 +239,29 @@ Support workflow.
 | active | |
 | created_at | |
 
-## device_catalog
+## asset_catalog
 
 Master normalized catalog identity.
 
 | Field | Notes |
 | --- | --- |
 | id | PK |
-| device_type | |
+| asset_classification | |
 | manufacturer_normalized | |
 | model_normalized | |
 | product_family | |
 | description | |
-| normalized_device_key | Stable match key |
+| normalized_asset_key | Stable match key |
 | created_at / updated_at | |
 
-## device_intelligence
+## asset_intelligence
 
 AI-enriched record (separate from field truth).
 
 | Field | Notes |
 | --- | --- |
 | id | PK |
-| device_catalog_id | FK |
+| asset_catalog_id | FK |
 | life_expectancy_years_low / high | |
 | source_confidence | |
 | summary | |
@@ -271,7 +274,7 @@ AI-enriched record (separate from field truth).
 | Field | Notes |
 | --- | --- |
 | id | PK |
-| device_catalog_id | FK |
+| asset_catalog_id | FK |
 | vendor_name / vendor_part_number / vendor_url | |
 | price_estimate | |
 | lead_time_estimate_days | |
@@ -284,11 +287,11 @@ AI-enriched record (separate from field truth).
 
 Caldaia-owned stock (Phase 2+).
 
-sku, quantity_on_hand, warehouse_location, min_stock_level, reorder_level, last_counted_at, device_catalog_id.
+sku, quantity_on_hand, warehouse_location, min_stock_level, reorder_level, last_counted_at, asset_catalog_id.
 
 ## compatible_replacements
 
-source_device_catalog_id → replacement_device_catalog_id, compatibility_type, notes, reviewed_by_human, confidence_score.
+source_asset_catalog_id → replacement_asset_catalog_id, compatibility_type, notes, reviewed_by_human, confidence_score.
 
 ## integration_events
 
@@ -308,6 +311,6 @@ Not listed in the original entity summary as a business entity, but required for
 
 ## Layering reminder
 
-- Field tables (`safety_devices`, history) = truth from inspections  
-- `device_catalog` = normalized identity  
-- `device_intelligence` / `vendor_options` = AI layer with confidence + freshness  
+- Field tables (`assets`, observations) = truth from inspections
+- `asset_catalog` = normalized identity
+- `asset_intelligence` / `vendor_options` = AI layer with confidence + freshness
