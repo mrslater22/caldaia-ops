@@ -8,8 +8,8 @@
 - Plant detail  
 - Inspection reports  
 - Report detail / download  
-- Device inventory list  
-- Device detail  
+- Asset inventory list
+- Asset detail
 - Support tickets  
 - Ticket detail  
 - Account settings  
@@ -19,7 +19,7 @@
 - Latest inspections  
 - Open findings  
 - Open tickets  
-- Critical devices  
+- Critical assets
 - Recently uploaded reports  
 
 ### Plant detail
@@ -27,16 +27,16 @@
 - Facility profile  
 - Last inspection date  
 - Inspection history  
-- Current safety-device inventory  
+- Current safety and measurement asset inventory
 - Active findings  
 - Related documents  
 - Open tickets  
 
-### Device detail
+### Asset detail
 
 - Current installed data  
 - Inspection history  
-- AI device intelligence  
+- AI asset intelligence
 - Vendor options  
 - Replacement recommendation  
 - Caldaia stock availability (when applicable)  
@@ -52,7 +52,7 @@
 ## Support ticket workflow (v1)
 
 1. Client submits ticket from portal  
-2. Ticket linked to plant and optionally device  
+2. Ticket linked to plant and optionally asset
 3. Internal triage and assignment  
 4. Threaded updates visible to client  
 5. Attachments supported  
@@ -63,7 +63,7 @@
 - SLA rules  
 - Automatic routing  
 - AI summarization  
-- Suggested replacement part from linked device  
+- Suggested replacement part from linked asset
 - Service dispatch generation  
 
 ## Design constraint
@@ -72,12 +72,12 @@ Keep v1 focused on **reports, inventory, and tickets**. Avoid portal sprawl befo
 
 ## Internal inventory strategy (Phase 2+)
 
-Track Caldaia-owned spare inventory; link parts to compatible devices; recommend truck stock and warehouse candidates.
+Track Caldaia-owned spare inventory; link parts to compatible assets; recommend truck stock and warehouse candidates.
 
 ### Decision engine inputs
 
 - Failure frequency  
-- Number of sites using the device  
+- Number of sites using the asset
 - Lead-time volatility  
 - Part criticality  
 - Margin opportunity  

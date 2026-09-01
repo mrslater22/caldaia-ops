@@ -1,6 +1,6 @@
 # Caldaia Ops / BoilerOps
 
-BoilerOps Intelligence Platform for **Caldaia Controls** — system of record, client portal, and AI device intelligence on top of FastField field inspections.
+BoilerOps Intelligence Platform for **Caldaia Controls** — system of record, client portal, and AI asset intelligence on top of FastField field inspections.
 
 Planned production URL: **https://boilerops.caldaiacontrols.com**
 
@@ -50,7 +50,7 @@ Start here: **[docs/development-plan.md](./docs/development-plan.md)**
 | [FastField integration](./docs/fastfield-integration.md) | Ingestion + Sprint 0 checklist |
 | [Data dictionary](./docs/data-dictionary.md) | Domain entities |
 | [API contracts](./docs/api-contracts.md) | Planned endpoints |
-| [AI device intelligence](./docs/ai-device-intelligence.md) | Enrichment pipeline |
+| [AI asset intelligence](./docs/ai-asset-intelligence.md) | Enrichment pipeline |
 | [Portal scope](./docs/portal-scope.md) | Portal + tickets |
 | [Implementation prompts](./docs/implementation-prompts.md) | Cursor build prompts |
 

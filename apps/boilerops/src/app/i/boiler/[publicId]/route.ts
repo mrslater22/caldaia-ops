@@ -62,17 +62,17 @@ export async function GET(_request: Request, { params }: Params) {
     );
   }
 
-  const { data: devices, error: devicesError } = await supabase
-    .from("devices")
+  const { data: assets, error: assetsError } = await supabase
+    .from("legacy_assets")
     .select(
-      "public_id, device_type, manufacturer, model, serial_number, location_description, service_status",
+      "public_id, asset_code, asset_category, asset_classification, asset_nomenclature, asset_name, manufacturer, model, serial_number, location_description, service_status",
     )
     .eq("boiler_id", boiler.id)
-    .order("device_type");
+    .order("asset_classification");
 
-  if (devicesError) {
+  if (assetsError) {
     return NextResponse.json<PrefillErrorPayload>(
-      { ok: false, error: devicesError.message },
+      { ok: false, error: assetsError.message },
       { status: 500 },
     );
   }
@@ -99,7 +99,7 @@ export async function GET(_request: Request, { params }: Params) {
       notes: boiler.notes,
       onboarded_at: boiler.onboarded_at,
     },
-    devices: devices ?? [],
+    assets: assets ?? [],
   };
 
   return NextResponse.json(payload, {

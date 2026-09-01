@@ -57,7 +57,7 @@ export async function POST(request: Request) {
         warning: result.warning ?? null,
         site_public_id: result.sitePublicId,
         boiler_public_id: result.boilerPublicId,
-        device_public_ids: result.devicePublicIds,
+        asset_public_ids: result.assetPublicIds,
         fastfield_sync_status: result.fastFieldSyncStatus ?? null,
         urls: result.sitePublicId
           ? {
@@ -67,8 +67,8 @@ export async function POST(request: Request) {
           : result.boilerPublicId
           ? {
               boiler: `${appUrl}/i/boiler/${result.boilerPublicId}`,
-              devices: result.devicePublicIds.map(
-                (id) => `${appUrl}/i/device/${id}`,
+              assets: result.assetPublicIds.map(
+                (id) => `${appUrl}/i/asset/${id}`,
               ),
             }
           : null,

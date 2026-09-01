@@ -502,7 +502,7 @@ export default function InspectionJobsPage() {
                   }))
                 }
                 className="w-full rounded-md border border-border px-3 py-2"
-                placeholder="Annual safety device inspection"
+                placeholder="Annual safety and measurement asset inspection"
               />
             </label>
 

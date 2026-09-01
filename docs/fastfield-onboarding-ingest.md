@@ -11,7 +11,7 @@ FastField needs a **public HTTPS** URL (tunnel or deployed host), not localhost.
 
 1. Authenticates (optional shared secret)
 2. Stores immutable raw JSON in `integration_events`
-3. Maps payload into `boilers` + `devices`
+3. Maps payload into `boilers` + `legacy_assets`
 4. Assigns QR public IDs (`blr_…`, `dev_…`)
 5. Returns those IDs and QR lookup URLs
 
@@ -31,7 +31,7 @@ If the env var is empty, requests are accepted (POC only).
 
 Example: `https://boilerops.vercel.app/api/fastfield/sample`
 
-Stores raw JSON only (no boiler/device create). View it at **Admin → FastField sample**.
+Stores raw JSON only (no boiler/asset create). View it at **Admin → FastField sample**.
 
 ## FastField form setup
 
@@ -50,17 +50,17 @@ Stores raw JSON only (no boiler/device create). View it at **Admin → FastField
   "event_id": "…",
   "submission_id": "…",
   "boiler_public_id": "blr_…",
-  "device_public_ids": ["dev_…"],
+  "asset_public_ids": ["asset_…"],
   "urls": {
     "boiler": "https://…/i/boiler/blr_…",
-    "devices": ["https://…/i/device/dev_…"]
+    "assets": ["https://…/i/asset/asset_…"]
   }
 }
 ```
 
 ## Field mapping
 
-Mapper accepts common aliases (`facility_name`, `boiler_tag`, `devices[]`, etc.).  
+Mapper accepts common aliases (`facility_name`, `boiler_tag`, `assets[]`, etc.).
 Once your real FastField keys are known, we tighten `onboarding-mapper.ts`.
 
 ## Manual test
@@ -68,5 +68,5 @@ Once your real FastField keys are known, we tighten `onboarding-mapper.ts`.
 ```bash
 curl -X POST http://localhost:3000/api/fastfield/submissions ^
   -H "Content-Type: application/json" ^
-  -d "{\"submissionId\":\"test-001\",\"facility_name\":\"Demo Hospital\",\"boiler_tag\":\"B-1\",\"devices\":[{\"device_type\":\"PSV\",\"manufacturer\":\"Conbraco\",\"model\":\"10-600\"}]}"
+  -d "{\"submissionId\":\"test-001\",\"facility_name\":\"Demo Hospital\",\"boiler_tag\":\"B-1\",\"assets\":[{\"asset_category\":\"safety\",\"asset_classification\":\"Steam Safety Valve\",\"manufacturer\":\"Conbraco\",\"model\":\"10-600\"}]}"
 ```

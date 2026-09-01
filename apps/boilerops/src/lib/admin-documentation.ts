@@ -62,7 +62,7 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
             ],
             [
               "BoilerOps",
-              "Sites, targets, devices, inspection jobs, historical facts, final report packages, portal, integrations, and intelligence.",
+              "Sites, targets, assets, inspection jobs, historical facts, final report packages, portal, integrations, and intelligence.",
             ],
           ],
         },
@@ -94,12 +94,12 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
             [
               "Phase 1",
               "Asset system of record",
-              "Site, Boiler/Plant target and Device onboarding, permanent QR codes",
+              "Site, Boiler/Plant target and Asset onboarding, permanent QR codes",
             ],
             [
               "Phase 2",
               "Inspection jobs and reporting",
-              "Job planning, Job QR, device history, consolidated report packages",
+              "Job planning, Job QR, asset history, consolidated report packages",
             ],
             [
               "Phase 3",
@@ -109,7 +109,7 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
             [
               "Phase 4+",
               "Intelligence",
-              "Device normalization, enrichment, replacement and predictive workflows",
+              "Asset normalization, enrichment, replacement and predictive workflows",
             ],
           ],
         },
@@ -119,10 +119,10 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
         bullets: [
           "FastField ingestion with immutable raw events and idempotent processing",
           "Administrator-created inspection jobs and job QR codes",
-          "Normalized inspections, tests, answers, and device observations",
+          "Normalized inspections, tests, answers, and asset observations",
           "Versioned consolidated report packages in Supabase Storage",
           "Portal access to reports and asset inventory",
-          "Support tickets and limited AI intelligence for selected device classes",
+          "Support tickets and limited AI intelligence for selected asset classes",
           "FastField remains the field-form platform during MVP",
         ],
       },
@@ -135,7 +135,7 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
             ["Field truth separate from AI", "Prevents generated data from overwriting observations"],
             ["Idempotent ingestion", "Safe retries, updates, and reconciliation"],
             ["Public IDs in URLs", "Stable QR links without exposing database keys"],
-            ["Append-oriented history", "Preserves device and inspection chronology"],
+            ["Append-oriented history", "Preserves asset and inspection chronology"],
             ["Versioned definitions", "Retains the exact procedure and questions used"],
             ["Tenant isolation", "Supports secure multi-tenant SaaS growth"],
           ],
@@ -153,13 +153,13 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
     source: "FastField relational-model canvas; updated to the canonical inspection-target model",
     callout: {
       tone: "warning",
-      title: "A submitted device row is not automatically a new physical asset",
-      body: "The same serial number or Device ID can participate in multiple test sections. Store the installed device once and link it to every applicable test execution.",
+      title: "A submitted asset row is not automatically a new physical asset",
+      body: "The same serial number or Asset ID can participate in multiple test sections. Store the installed asset once and link it to every applicable test execution.",
     },
     stats: [
       { value: "3", label: "Data layers", tone: "info" },
       { value: "2", label: "Inspectable target types" },
-      { value: "N↔N", label: "Tests to devices", tone: "warning" },
+      { value: "N↔N", label: "Tests to assets", tone: "warning" },
       { value: "1", label: "Immutable raw event per delivery" },
     ],
     sections: [
@@ -170,12 +170,12 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
           rows: [
             [
               "Asset master",
-              "sites → inspection_targets → safety_devices",
+              "sites → inspection_targets → assets",
               "Current physical truth, stable IDs, QR targets, and FastField lookup projections",
             ],
             [
               "Inspection facts",
-              "inspection_jobs → inspections → inspection_tests → answers/devices",
+              "inspection_jobs → inspections → inspection_tests → answers/assets",
               "Append-oriented record of what happened, what was measured, and the outcome",
             ],
             [
@@ -195,11 +195,11 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
             [
               "inspection_targets",
               "Persistent Boiler or Plant asset",
-              "One to many devices and inspection events",
+              "One to many assets and inspection events",
             ],
             [
-              "safety_devices",
-              "Current installed physical device",
+              "assets",
+              "Current installed safety or measurement asset",
               "May participate in many test executions",
             ],
             [
@@ -216,21 +216,21 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
             [
               "inspection_tests",
               "One activated test/report section",
-              "Links definition version, devices, answers, and outcome",
+              "Links definition version, assets, answers, and outcome",
             ],
             [
-              "inspection_test_devices",
-              "Device participation in a test",
+              "inspection_test_assets",
+              "Asset participation in a test",
               "Many-to-many junction",
             ],
             [
               "inspection_test_answers",
-              "One typed answer per question and optional device",
-              "Device- or test-scoped",
+              "One typed answer per question and optional asset",
+              "Asset- or test-scoped",
             ],
             [
-              "safety_device_observations",
-              "Inspection-time device snapshot",
+              "asset_observations",
+              "Inspection-time asset snapshot",
               "Append-only history",
             ],
             [
@@ -245,11 +245,11 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
         title: "Result storage rule",
         bullets: [
           "Do not create one wide table containing every possible result column.",
-          "Keep universal section and device outcomes in stable relational fields.",
+          "Keep universal section and asset outcomes in stable relational fields.",
           "Define variable questions in safety_test_questions.",
           "Store each answer as a typed inspection_test_answers row.",
-          "Use safety_device_id only for answers that belong to a participating physical device.",
-          "Leave safety_device_id empty for purge, accumulation, timing, and other test-level results.",
+          "Use asset_id only for answers that belong to a participating physical asset.",
+          "Leave asset_id empty for purge, accumulation, timing, and other test-level results.",
         ],
       },
       {
@@ -259,7 +259,7 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
           rows: [
             ["Site Info", "One flattened row per Site", "bo_siteid"],
             ["Inspection Info", "One flattened row per Boiler or Plant target", "bo_targetid"],
-            ["Device Info", "One flattened row per physical safety device", "bo_deviceid"],
+            ["Asset Info", "One flattened row per physical safety or measurement asset", "bo_assetid"],
           ],
         },
       },
@@ -276,7 +276,7 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
     callout: {
       tone: "warning",
       title: "PDF concatenation is not the data model",
-      body: "Retain FastField source reports as evidence, but generate the consolidated client package from normalized job, target, test, answer, device, certification, finding, and document records.",
+      body: "Retain FastField source reports as evidence, but generate the consolidated client package from normalized job, target, test, answer, asset, certification, finding, and document records.",
     },
     stats: [
       { value: "86", label: "Boiler template pages" },
@@ -291,7 +291,7 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
           "Shared front matter: job number, report version, Site/contact snapshot, dates, evaluators, witnesses, and summary",
           "One Plant chapter containing Plant description, pretest review, 16 tests, reliability checklist, certification, and exceptions",
           "One Boiler chapter per expected Boiler target containing the applicable subset of 45 tests",
-          "Appendices containing consolidated findings, photos, supporting documents, device history, and source provenance",
+          "Appendices containing consolidated findings, photos, supporting documents, asset history, and source provenance",
         ],
       },
       {
@@ -302,10 +302,10 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
             ["Site/contact/evaluators/date", "Inspection job snapshot", "Render once in package front matter"],
             ["Boiler or Plant description", "Target and immutable job snapshot", "Render at chapter start"],
             ["Numbered procedure", "Versioned test definition", "Controlled and historically reproducible"],
-            ["Make/model/serial/setpoint", "Device + inspection observation", "Current inventory and historical snapshot"],
+            ["Make/model/serial/setpoint", "Asset + inspection observation", "Current inventory and historical snapshot"],
             ["Y/N questions and readings", "Question definitions + typed answers", "Queryable rather than one report JSON blob"],
-            ["Section pass/fail", "Inspection test execution", "Separate from participating-device results"],
-            ["Failure/remedy comments", "Finding linked to test/device", "Generate exception appendix"],
+            ["Section pass/fail", "Inspection test execution", "Separate from participating-asset results"],
+            ["Failure/remedy comments", "Finding linked to test/asset", "Generate exception appendix"],
             ["Certification", "Inspection certification", "Snapshot statement, signer, role, and time"],
             ["Final PDF", "Report package version", "Store path, provenance, and checksum"],
           ],
@@ -317,10 +317,10 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
           headers: ["Pattern", "Required behavior"],
           rows: [
             ["Conditional applicability", "Store applicable, not applicable, waived, and reason explicitly"],
-            ["Multiple devices per section", "Maintain a test-to-device many-to-many relationship"],
-            ["System-level tests", "Allow test answers with no forced Device owner"],
+            ["Multiple assets per section", "Maintain a test-to-asset many-to-many relationship"],
+            ["System-level tests", "Allow test answers with no forced Asset owner"],
             ["Calculated criteria", "Version formulas and retain inputs plus computed result"],
-            ["Supporting instruments", "Reference gauges/meters separately from installed safety devices"],
+            ["Supporting instruments", "Classify installed gauges/meters as measurement assets"],
             ["Certification branches", "Generate all-pass or failure language from accepted package state"],
             ["Comments appendix", "Generate from normalized findings instead of duplicate template fields"],
           ],
@@ -358,21 +358,21 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
     ],
   },
   {
-    slug: "safety-device-subforms",
+    slug: "safety-asset-subforms",
     category: "FastField",
-    title: "Safety-device subform catalog",
+    title: "Safety-asset subform catalog",
     summary:
-      "The reusable FastField device subforms needed to cover all 61 numbered Boiler and Plant tests.",
+      "The reusable FastField safety-asset subforms needed to cover all 61 numbered Boiler and Plant tests.",
     updated: "August 15, 2026",
     source: "Boiler and Plant report review plus VA nomenclature",
     callout: {
       tone: "info",
       title: "Create subforms by physical family, not by report section",
-      body: "Use one repeated child row per actual device and reference that device from every applicable procedure. Do not create 61 independent device schemas.",
+      body: "Use one repeated child row per actual asset and reference that asset from every applicable procedure. Do not create 61 independent asset schemas.",
     },
     stats: [
       { value: "61", label: "Tests reviewed" },
-      { value: "16", label: "Reusable device subforms", tone: "info" },
+      { value: "16", label: "Reusable asset subforms", tone: "info" },
       { value: "1", label: "Shared instrument subform" },
       { value: "8", label: "System/procedure sections", tone: "warning" },
     ],
@@ -380,7 +380,7 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
       {
         title: "Subforms to create",
         table: {
-          headers: ["Device subform", "Representative coverage", "Distinctive fields"],
+          headers: ["Asset subform", "Representative coverage", "Distinctive fields"],
           rows: [
             ["Level alarm/cutoff", "LWA, LWCO, ALWCO, HWA, tank alarms", "Function, sensor type, level reference, sight glass, shunt/reset"],
             ["Absolute-pressure switch/alarm", "Gas, oil, steam, atomizing, control air", "High/low role, medium, range, setpoint, reference pressure"],
@@ -404,8 +404,8 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
       {
         title: "Common identity block",
         bullets: [
-          "BoilerOps Device ID and scanned QR",
-          "Nomenclature, device code, classification, subtype, role, and sequence",
+          "BoilerOps Asset ID and scanned QR",
+          "Nomenclature, asset code, classification, subtype, role, and sequence",
           "Site, Boiler/Plant target, parent equipment, and physical location",
           "Manufacturer, model, serial number, and manufacture/install dates",
           "Service medium, range, configured setpoint, and controlled unit",
@@ -436,28 +436,28 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
             ["Atomizing-media survey", "LAMPS/LAMDPS/SLAMPS", "Shared pressure survey feeds several switches"],
             ["Emergency shutdown", "All ESPB stations", "Coordinated gas, oil, and propane response"],
             ["Backup pilot", "PPBS", "System alignment and successful light-off"],
-            ["Pretest/reliability", "Plant documentation and Appendix E", "Operational checklist rather than physical device"],
+            ["Pretest/reliability", "Plant documentation and Appendix E", "Operational checklist rather than physical asset"],
           ],
         },
       },
       {
         title: "Repeating-section rules",
         bullets: [
-          "One child row per physical device",
-          "Use Device ID, role, and sequence instead of fixed 1/2/3 columns",
-          "Allow one device to participate in multiple procedures",
+          "One child row per physical asset",
+          "Use Asset ID, role, and sequence instead of fixed 1/2/3 columns",
+          "Allow one asset to participate in multiple procedures",
           "Reference supporting instruments rather than copying their metadata",
-          "Calculate section outcome from participating-device results",
+          "Calculate section outcome from participating-asset results",
         ],
       },
     ],
   },
   {
-    slug: "device-classification-fields",
+    slug: "asset-classification-fields",
     category: "Data specification",
-    title: "Device classification field specification",
+    title: "Asset classification field specification",
     summary:
-      "Common and classification-specific details and results to collect in FastField for each VA device family.",
+      "Common and classification-specific details and results to collect in FastField for each VA asset family.",
     updated: "August 15, 2026",
     source: "Report templates, subform taxonomy, and supplied VA nomenclature",
     callout: {
@@ -467,17 +467,17 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
     },
     stats: [
       { value: "18", label: "Physical/configuration classes", tone: "info" },
-      { value: "2", label: "Non-device record types" },
+      { value: "2", label: "Non-asset record types" },
       { value: "8", label: "Shared result groups" },
       { value: "6", label: "Nomenclature checks", tone: "warning" },
     ],
     sections: [
       {
-        title: "Fields collected for every device",
+        title: "Fields collected for every asset",
         table: {
           headers: ["Group", "Fields"],
           rows: [
-            ["Identity", "bo_deviceid; nomenclature; device code; sequence/role; classification; subtype"],
+            ["Identity", "bo_assetid; nomenclature; asset code; sequence/role; category; classification; subtype"],
             ["Ownership", "Site ID; Boiler/Plant target ID; parent equipment/assembly ID"],
             ["Physical details", "Manufacturer; model; serial; manufacture/install dates; location"],
             ["Service", "Medium; in-service status; normal state; reset mode; functional role"],
@@ -493,7 +493,7 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
           rows: [
             ["Applicability", "Applicable / N/A / Not tested and reason"],
             ["Installation", "Correct installation?"],
-            ["Function", "Did the device operate correctly?"],
+            ["Function", "Did the asset operate correctly?"],
             ["Outputs", "Alarm, annunciation, shutdown, lockout, and reset correct?"],
             ["Measurement", "Observed value and controlled unit"],
             ["Outcome", "Pass / Fail / N/A / Incomplete"],
@@ -505,7 +505,7 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
       {
         title: "Classification-specific details",
         table: {
-          headers: ["Classification", "Configuration/details", "Device-specific results"],
+          headers: ["Classification", "Configuration/details", "Asset-specific results"],
           rows: [
             ["Automatic Process Valve", "Role, train, service, size/rating, normal state, test ports, vent/drain, POC", "Open/close response, leakage method/duration, bubbles/drop rate"],
             ["Level Alarm / Cutoff", "High/low role, sensor, setpoint/reference, vessel diameter, sight glass, shunt/reset", "Activation level, alarm/cutoff sequence, shutdown/reset"],
@@ -524,7 +524,7 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
             ["Motor-Current Relay", "Phase, relay type/range/setpoint, split-core and enclosure", "Per-phase prevention/shutdown result"],
             ["Emergency-Stop Station", "Location, signage, guard, reset and shutdown outputs", "Gas/oil/propane response seconds"],
             ["Pressure-Reducing Valve", "Service, size, upstream/downstream pressure, setpoint, capacity, bypass", "Context for safety-valve accumulation"],
-            ["Isolation Valve / Test Arrangement", "Service line, lock position, associated test port/device and test rig", "Correct setup, lock state, operability and restoration"],
+            ["Isolation Valve / Test Arrangement", "Service line, lock position, associated test port/asset and test rig", "Correct setup, lock state, operability and restoration"],
           ],
         },
       },

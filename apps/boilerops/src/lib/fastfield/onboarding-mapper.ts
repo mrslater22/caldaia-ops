@@ -79,12 +79,15 @@ export type OnboardingFieldMappings = Partial<{
   contact_email: string;
   contact_phone: string;
   notes: string;
-  devices: string;
+  assets: string;
 }>;
 
-export type MappedOnboardingDevice = {
-  device_type: string;
-  equipment_group: string | null;
+export type MappedOnboardingAsset = {
+  asset_code: string | null;
+  asset_category: "safety" | "measurement";
+  asset_classification: string;
+  asset_nomenclature: string | null;
+  asset_name: string | null;
   manufacturer: string | null;
   model: string | null;
   serial_number: string | null;
@@ -109,7 +112,7 @@ export type MappedBoilerOnboarding = {
   contact_email: string | null;
   contact_phone: string | null;
   notes: string | null;
-  devices: MappedOnboardingDevice[];
+  assets: MappedOnboardingAsset[];
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -119,15 +122,18 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return null;
 }
 
-function mapDeviceRow(row: Record<string, unknown>): MappedOnboardingDevice | null {
-  const device_type =
+function mapAssetRow(row: Record<string, unknown>): MappedOnboardingAsset | null {
+  const asset_classification =
     ffPick(row, [
-      "device_type",
-      "deviceType",
+      "asset_classification",
+      "assetClassification",
+      "classification",
       "type",
       "equipment_type",
-      "safety_device_type",
     ]) ?? "unknown";
+  const category = ffPick(row, ["asset_category", "assetCategory", "category"]);
+  const asset_category =
+    category?.toLowerCase() === "measurement" ? "measurement" : "safety";
 
   const manufacturer = ffPick(row, ["manufacturer", "mfr", "make"]);
   const model = ffPick(row, ["model", "model_number", "modelNumber"]);
@@ -139,7 +145,7 @@ function mapDeviceRow(row: Record<string, unknown>): MappedOnboardingDevice | nu
 
   // Skip completely empty placeholder rows
   if (
-    device_type === "unknown" &&
+    asset_classification === "unknown" &&
     !manufacturer &&
     !model &&
     !serial_number
@@ -148,8 +154,15 @@ function mapDeviceRow(row: Record<string, unknown>): MappedOnboardingDevice | nu
   }
 
   return {
-    device_type,
-    equipment_group: ffPick(row, ["equipment_group", "equipmentGroup", "group"]),
+    asset_code: ffPick(row, ["asset_code", "assetCode"]),
+    asset_category,
+    asset_classification,
+    asset_nomenclature: ffPick(row, [
+      "asset_nomenclature",
+      "assetNomenclature",
+      "nomenclature",
+    ]),
+    asset_name: ffPick(row, ["asset_name", "assetName", "name"]),
     manufacturer,
     model,
     serial_number,
@@ -164,18 +177,15 @@ function mapDeviceRow(row: Record<string, unknown>): MappedOnboardingDevice | nu
   };
 }
 
-function extractDeviceRows(
+function extractAssetRows(
   payload: Record<string, unknown>,
-  mappedDevicesKey?: string | null,
-): MappedOnboardingDevice[] {
+  mappedAssetsKey?: string | null,
+): MappedOnboardingAsset[] {
   const listKeys = [
-    mappedDevicesKey,
-    "devices",
-    "safety_devices",
-    "safetyDevices",
-    "equipment",
-    "device_list",
-    "deviceList",
+    mappedAssetsKey,
+    "assets",
+    "asset_list",
+    "assetList",
   ].filter((key): key is string => Boolean(key));
 
   for (const key of listKeys) {
@@ -184,19 +194,19 @@ function extractDeviceRows(
     return raw
       .map((item) => asRecord(item))
       .filter((item): item is Record<string, unknown> => Boolean(item))
-      .map(mapDeviceRow)
-      .filter((item): item is MappedOnboardingDevice => Boolean(item));
+      .map(mapAssetRow)
+      .filter((item): item is MappedOnboardingAsset => Boolean(item));
   }
 
   // Some FastField payloads nest repeating sections under a parent object
   for (const [key, value] of Object.entries(payload)) {
-    if (!/device|equipment|safety/i.test(key)) continue;
+    if (!/asset/i.test(key)) continue;
     if (!Array.isArray(value)) continue;
     const mapped = value
       .map((item) => asRecord(item))
       .filter((item): item is Record<string, unknown> => Boolean(item))
-      .map(mapDeviceRow)
-      .filter((item): item is MappedOnboardingDevice => Boolean(item));
+      .map(mapAssetRow)
+      .filter((item): item is MappedOnboardingAsset => Boolean(item));
     if (mapped.length) return mapped;
   }
 
@@ -306,6 +316,6 @@ export function mapBoilerOnboarding(
       "comments",
       "remarks",
     ]),
-    devices: extractDeviceRows(payload, mappings.devices),
+    assets: extractAssetRows(payload, mappings.assets),
   };
 }

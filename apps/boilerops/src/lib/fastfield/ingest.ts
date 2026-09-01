@@ -106,7 +106,7 @@ export type IngestResult = {
   duplicate: boolean;
   sitePublicId: string | null;
   boilerPublicId: string | null;
-  devicePublicIds: string[];
+  assetPublicIds: string[];
   fastFieldSyncStatus?: "pending" | "synced" | "failed";
   warning?: string;
 };
@@ -145,14 +145,14 @@ export async function ingestFastFieldSubmission(
       result?: {
         sitePublicId?: string;
         boilerPublicId?: string;
-        devicePublicIds?: string[];
+        assetPublicIds?: string[];
         fastFieldSyncStatus?: "pending" | "synced" | "failed";
       };
     } | null;
     const prior = (existing.result_json ?? legacyPayload?.result ?? {}) as {
       sitePublicId?: string;
       boilerPublicId?: string;
-      devicePublicIds?: string[];
+      assetPublicIds?: string[];
       fastFieldSyncStatus?: "pending" | "synced" | "failed";
     };
     return {
@@ -163,7 +163,7 @@ export async function ingestFastFieldSubmission(
       duplicate: true,
       sitePublicId: prior.sitePublicId ?? null,
       boilerPublicId: prior.boilerPublicId ?? null,
-      devicePublicIds: prior.devicePublicIds ?? [],
+      assetPublicIds: prior.assetPublicIds ?? [],
       fastFieldSyncStatus: prior.fastFieldSyncStatus,
     };
   }
@@ -194,7 +194,7 @@ export async function ingestFastFieldSubmission(
     let created: {
       sitePublicId: string | null;
       boilerPublicId: string | null;
-      devicePublicIds: string[];
+      assetPublicIds: string[];
       fastFieldSyncStatus?: "pending" | "synced" | "failed";
     };
 
@@ -207,7 +207,7 @@ export async function ingestFastFieldSubmission(
       created = {
         sitePublicId: persisted.sitePublicId,
         boilerPublicId: null,
-        devicePublicIds: [],
+        assetPublicIds: [],
         fastFieldSyncStatus: sync.status,
       };
       if (sync.error) {
@@ -223,7 +223,7 @@ export async function ingestFastFieldSubmission(
       created = {
         sitePublicId: null,
         boilerPublicId: boiler.boilerPublicId,
-        devicePublicIds: boiler.devicePublicIds,
+        assetPublicIds: boiler.assetPublicIds,
       };
     } else {
       throw new Error(
@@ -248,7 +248,7 @@ export async function ingestFastFieldSubmission(
       duplicate: false,
       sitePublicId: created.sitePublicId,
       boilerPublicId: created.boilerPublicId,
-      devicePublicIds: created.devicePublicIds,
+      assetPublicIds: created.assetPublicIds,
       fastFieldSyncStatus: created.fastFieldSyncStatus,
       warning,
     };
@@ -305,7 +305,7 @@ export async function reprocessIntegrationEvent(eventId: string) {
   let created: {
     sitePublicId: string | null;
     boilerPublicId: string | null;
-    devicePublicIds: string[];
+    assetPublicIds: string[];
     fastFieldSyncStatus?: "pending" | "synced" | "failed";
   };
 
@@ -318,7 +318,7 @@ export async function reprocessIntegrationEvent(eventId: string) {
     created = {
       sitePublicId: persisted.sitePublicId,
       boilerPublicId: null,
-      devicePublicIds: [],
+      assetPublicIds: [],
       fastFieldSyncStatus: sync.status,
     };
     if (sync.error) {
@@ -332,7 +332,7 @@ export async function reprocessIntegrationEvent(eventId: string) {
     created = {
       sitePublicId: null,
       boilerPublicId: boiler.boilerPublicId,
-      devicePublicIds: boiler.devicePublicIds,
+      assetPublicIds: boiler.assetPublicIds,
     };
   } else {
     throw new Error(`Unsupported form purpose "${purpose}".`);
@@ -357,7 +357,7 @@ export async function reprocessIntegrationEvent(eventId: string) {
     submissionId,
     sitePublicId: created.sitePublicId,
     boilerPublicId: created.boilerPublicId,
-    devicePublicIds: created.devicePublicIds,
+    assetPublicIds: created.assetPublicIds,
     fastFieldSyncStatus: created.fastFieldSyncStatus,
     warning,
   };
@@ -435,35 +435,40 @@ async function persistOnboarding(
     publicId = boiler.public_id;
   }
 
-  await supabase.from("devices").delete().eq("boiler_id", boilerId);
+  await supabase.from("legacy_assets").delete().eq("boiler_id", boilerId);
 
-  const devicePublicIds: string[] = [];
-  if (mapped.devices.length) {
-    const rows = mapped.devices.map((device) => {
-      const devicePublicId = makePublicId("dev");
-      devicePublicIds.push(devicePublicId);
+  const assetPublicIds: string[] = [];
+  if (mapped.assets.length) {
+    const rows = mapped.assets.map((asset) => {
+      const assetPublicId = makePublicId("asset");
+      assetPublicIds.push(assetPublicId);
       return {
-        public_id: devicePublicId,
+        public_id: assetPublicId,
         boiler_id: boilerId,
         organization_id: DEMO_ORGANIZATION_ID,
-        equipment_group: device.equipment_group,
-        device_type: device.device_type,
-        manufacturer: device.manufacturer,
-        model: device.model,
-        serial_number: device.serial_number,
-        install_date: device.install_date,
-        set_point: device.set_point,
-        trip_point: device.trip_point,
-        location_description: device.location_description,
+        asset_code: asset.asset_code,
+        asset_category: asset.asset_category,
+        asset_classification: asset.asset_classification,
+        asset_nomenclature: asset.asset_nomenclature,
+        asset_name: asset.asset_name,
+        manufacturer: asset.manufacturer,
+        model: asset.model,
+        serial_number: asset.serial_number,
+        install_date: asset.install_date,
+        set_point: asset.set_point,
+        trip_point: asset.trip_point,
+        location_description: asset.location_description,
         service_status: "active",
       };
     });
 
-    const { error: devicesError } = await supabase.from("devices").insert(rows);
-    if (devicesError) {
-      throw new Error(devicesError.message);
+    const { error: assetsError } = await supabase
+      .from("legacy_assets")
+      .insert(rows);
+    if (assetsError) {
+      throw new Error(assetsError.message);
     }
   }
 
-  return { boilerPublicId: publicId, devicePublicIds };
+  return { boilerPublicId: publicId, assetPublicIds };
 }

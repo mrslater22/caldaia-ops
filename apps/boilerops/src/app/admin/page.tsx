@@ -13,7 +13,7 @@ export default function AdminDashboardPage() {
           <code className="text-foreground">/i/site/&#123;id&#125;</code>,{" "}
           <code className="text-foreground">/i/job/&#123;id&#125;</code>,{" "}
           <code className="text-foreground">/i/boiler/&#123;id&#125;</code> and{" "}
-          <code className="text-foreground">/i/device/&#123;id&#125;</code>.
+          <code className="text-foreground">/i/asset/&#123;id&#125;</code>.
         </p>
       </section>
 
@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
           </h3>
           <p className="mt-2 text-sm text-muted">
             View and print native control-panel versions of the planning,
-            architecture, report-review, and FastField device canvases.
+            architecture, report-review, and FastField asset canvases.
           </p>
         </Link>
 
@@ -109,7 +109,7 @@ export default function AdminDashboardPage() {
             FastField Data Table configuration
           </h3>
           <p className="mt-2 text-sm text-muted">
-            Manage Site Info, Inspection Info, and Device Info endpoints,
+            Manage Site Info, Inspection Info, and Asset Info endpoints,
             identifiers, field mappings, and activation status.
           </p>
         </Link>

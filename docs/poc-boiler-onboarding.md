@@ -5,9 +5,9 @@
 Prove the loop:
 
 1. FastField **boiler onboarding** form submits to BoilerOps
-2. BoilerOps stores boiler + identified devices
-3. BoilerOps generates QR codes for **(a) the boiler** and **(b) each device**
-4. Field tech scans QR when testing → API returns boiler/device details (+ last test for devices)
+2. BoilerOps stores boiler + identified assets
+3. BoilerOps generates QR codes for **(a) the boiler** and **(b) each asset**
+4. Field tech scans QR when testing → API returns boiler/asset details (+ last observation for assets)
 5. FastField field-testing form is prefilled to avoid re-entry
 
 ## Current status
@@ -17,13 +17,13 @@ Prove the loop:
 | Next.js app scaffold (`apps/boilerops`) | Done |
 | Super admin login (env credentials + JWT cookie) | Done |
 | Supabase schema migration | Ready to run (`supabase/migrations/20260731_poc_schema.sql`) |
-| QR JSON APIs `/i/boiler/{id}` + `/i/device/{id}` | Implemented (needs Supabase keys) |
+| QR JSON APIs `/i/boiler/{id}` + `/i/asset/{id}` | Implemented (needs Supabase keys) |
 | FastField onboarding webhook | Done — `POST /api/fastfield/submissions` |
 | QR generation / printable sheets | Next after ingest |
 
 ## Naming
 
-POC tables use **`boilers`** (maps to “plant” in the long-term model). Devices live in **`devices`**. QR public IDs look like `blr_…` / `dev_…`.
+POC tables use **`boilers`** (maps to “plant” in the long-term model). Assets live in **`legacy_assets`**. New QR public IDs look like `blr_…` / `asset_…`.
 
 ## Prefill assumption
 
