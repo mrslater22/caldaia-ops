@@ -15,7 +15,7 @@ Contracts to implement across phases. Auth: Supabase session for portal; shared 
 
 **Requirements**
 
-- Validate shared secret / signature when available
+- Require `FASTFIELD_WEBHOOK_SECRET` on every request (`x-boilerops-secret` header or HTTP Basic password). Reject when the secret is missing, wrong, or unset. Fail closed in production when the environment variable is empty.
 - Persist immutable raw payload to `integration_events`
 - Idempotent on FastField submission ID (+ event type if applicable)
 - Enqueue `ingest_fastfield_submission`

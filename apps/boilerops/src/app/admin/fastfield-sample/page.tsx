@@ -99,6 +99,12 @@ export default function FastFieldSamplePage() {
           <li>FastField Form Builder → Delivery → HTTP/HTTPS</li>
           <li>Format: JSON</li>
           <li>Paste the URL above</li>
+          <li>
+            Send <code className="text-foreground">FASTFIELD_WEBHOOK_SECRET</code>{" "}
+            in the <code className="text-foreground">x-boilerops-secret</code>{" "}
+            header, or as the HTTP Basic password. The URL alone is not
+            authenticated.
+          </li>
           <li>Submit the test form, then click Refresh</li>
         </ol>
       </section>

@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "crypto";
 import { DEMO_ORGANIZATION_ID } from "@/lib/constants";
 import type {
   MappedBoilerOnboarding,
@@ -18,40 +17,6 @@ import { syncSiteToFastField } from "@/lib/fastfield/site-table-sync";
 import { makePublicId } from "@/lib/public-id";
 import { persistSiteOnboarding } from "@/lib/sites/service";
 import { createServiceClient } from "@/lib/supabase/server";
-
-export function authorizeFastFieldRequest(request: Request): boolean {
-  const configuredSecret = process.env.FASTFIELD_WEBHOOK_SECRET?.trim();
-  if (!configuredSecret) {
-    return true;
-  }
-
-  const headerSecret =
-    request.headers.get("x-boilerops-secret") ||
-    request.headers.get("x-api-key") ||
-    request.headers.get("x-fastfield-secret");
-
-  if (headerSecret && secretsEqual(headerSecret, configuredSecret)) {
-    return true;
-  }
-
-  const auth = request.headers.get("authorization");
-  if (auth?.startsWith("Basic ")) {
-    const decoded = Buffer.from(auth.slice(6), "base64").toString("utf8");
-    const [, password] = decoded.split(":");
-    if (password && secretsEqual(password, configuredSecret)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function secretsEqual(a: string, b: string): boolean {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  if (left.length !== right.length) return false;
-  return timingSafeEqual(left, right);
-}
 
 export type RegisteredForm = {
   id: string;

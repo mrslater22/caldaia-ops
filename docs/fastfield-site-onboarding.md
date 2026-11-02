@@ -54,6 +54,11 @@ Configure the FastField submit action:
 
 `POST https://YOUR-HOST/api/fastfield/submissions`
 
+Send `FASTFIELD_WEBHOOK_SECRET` on that request (`x-boilerops-secret` header
+or HTTP Basic password). See
+[fastfield-onboarding-ingest.md](./fastfield-onboarding-ingest.md). An empty
+secret is rejected.
+
 The endpoint:
 
 1. Stores the original JSON in `integration_events.payload_json`
