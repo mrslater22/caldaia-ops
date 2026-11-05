@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authorizeFastFieldRequest } from "@/lib/fastfield/ingest";
+import { authorizeFastFieldRequest } from "@/lib/fastfield/webhook-auth";
 import {
   readRequestPayload,
   storeFastFieldSample,
@@ -14,6 +14,7 @@ export async function GET() {
     purpose:
       "Capture a raw FastField payload for form mapping. Does not create boilers or assets.",
     view: "/admin/fastfield-sample",
+    auth: "Required. Send FASTFIELD_WEBHOOK_SECRET in the x-boilerops-secret header or as the HTTP Basic password.",
   });
 }
 

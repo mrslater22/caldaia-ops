@@ -34,5 +34,5 @@ FastField is assumed to GET the QR URL and consume a **JSON** body. Contract: [f
 1. Run `supabase/migrations/20260731_fastfield_forms.sql`
 2. Get FastField **form ID** + field schema (see [fastfield-form-schema.md](./fastfield-form-schema.md))
 3. Register them in Admin → FastField forms
-4. Point onboarding form HTTP/HTTPS delivery at public `/api/fastfield/submissions`
+4. Point onboarding form HTTP/HTTPS delivery at public `/api/fastfield/submissions` and send `FASTFIELD_WEBHOOK_SECRET` (`x-boilerops-secret` header or HTTP Basic password)
 5. Manage results in Admin → Submissions

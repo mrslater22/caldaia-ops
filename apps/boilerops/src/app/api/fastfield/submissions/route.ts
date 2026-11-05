@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
-import {
-  authorizeFastFieldRequest,
-  ingestFastFieldSubmission,
-} from "@/lib/fastfield/ingest";
+import { ingestFastFieldSubmission } from "@/lib/fastfield/ingest";
+import { authorizeFastFieldRequest } from "@/lib/fastfield/webhook-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json(
-      { ok: false, error: "Supabase is not configured." },
-      { status: 503 },
-    );
-  }
-
   if (!authorizeFastFieldRequest(request)) {
     return NextResponse.json(
       { ok: false, error: "Unauthorized." },
       { status: 401 },
+    );
+  }
+
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json(
+      { ok: false, error: "Supabase is not configured." },
+      { status: 503 },
     );
   }
 
@@ -88,5 +86,6 @@ export async function GET() {
     endpoint: "/api/fastfield/submissions",
     methods: ["POST"],
     purpose: "FastField form submission ingest (form-registry aware)",
+    auth: "Required. Send FASTFIELD_WEBHOOK_SECRET in the x-boilerops-secret header or as the HTTP Basic password.",
   });
 }

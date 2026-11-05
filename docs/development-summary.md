@@ -34,7 +34,7 @@ codes.
 ### FastField submission intake
 
 - Created the FastField JSON submission endpoint.
-- Added optional shared-secret authentication for inbound submissions.
+- Required a shared secret for inbound FastField webhooks. An empty secret fails closed in production; unauthenticated local delivery is an explicit dev-only opt-in.
 - Added submission idempotency to prevent duplicate processing.
 - Added administrative capture and reprocessing support.
 - Validated actual submission structures from the Site Onboarding and Boiler

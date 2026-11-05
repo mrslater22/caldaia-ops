@@ -140,7 +140,10 @@ export default function AdminDashboardPage() {
           <code className="text-foreground">
             POST /api/fastfield/submissions
           </code>{" "}
-          on a public HTTPS host.
+          on a public HTTPS host. Send{" "}
+          <code className="text-foreground">FASTFIELD_WEBHOOK_SECRET</code> in
+          the <code className="text-foreground">x-boilerops-secret</code>{" "}
+          header or as the HTTP Basic password.
         </p>
       </section>
     </div>

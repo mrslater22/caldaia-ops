@@ -8,6 +8,7 @@
     "dev": "npm run dev -w boilerops",
     "build": "npm run build -w boilerops",
     "start": "npm run start -w boilerops",
-    "lint": "npm run lint -w boilerops"
+    "lint": "npm run lint -w boilerops",
+    "test": "npm run test -w boilerops"
   }
 }

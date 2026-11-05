@@ -66,7 +66,7 @@ API key: FastField portal → profile / account / API settings (wording varies b
 
 ### Option C — Capture from first live submission (preferred)
 
-1. Point HTTP/HTTPS delivery at `/api/fastfield/sample` (stores JSON only)
+1. Point HTTP/HTTPS delivery at `/api/fastfield/sample` and send `FASTFIELD_WEBHOOK_SECRET` in the `x-boilerops-secret` header or as the HTTP Basic password (stores JSON only)
 2. Submit one test form
 3. Open **Admin → FastField sample**, copy JSON
 4. Register the form in **Admin → FastField forms** with `field_mappings_json`

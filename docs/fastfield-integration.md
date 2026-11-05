@@ -64,7 +64,7 @@ Treat each item as pass / fail / workaround before Phase 1 coding of mappers.
 | Capability | Question | Status | Notes / workaround |
 | --- | --- | --- | --- |
 | Webhook payload | Exact JSON shape for completed submissions? | TBD | |
-| Auth | Signature, shared secret, IP allowlist, OAuth? | TBD | |
+| Auth | Signature, shared secret, IP allowlist, OAuth? | Shared secret required | Header `x-boilerops-secret` or HTTP Basic password. See [fastfield-onboarding-ingest.md](./fastfield-onboarding-ingest.md). |
 | Report PDFs | Retrievable via API, or only workflow delivery? | TBD | |
 | Updates | Do submission edits emit new events? | TBD | |
 | IDs | How are document IDs and submission IDs exposed? | TBD | |
