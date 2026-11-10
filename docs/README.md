@@ -5,6 +5,7 @@
 | [development-plan.md](./development-plan.md) | Master plan — vision, stack, roadmap, MVP, risks |
 | [architecture.md](./architecture.md) | Flows, services, storage, QR |
 | [fastfield-integration.md](./fastfield-integration.md) | Ingestion + Sprint 0 checklist |
+| [fastfield-site-info-sync.md](./fastfield-site-info-sync.md) | Gated DataTables v3 upsert into the site info table |
 | [fastfield-submission-implementation-pattern.md](./fastfield-submission-implementation-pattern.md) | Repeatable Site Onboarding implementation pattern for future forms |
 | [data-dictionary.md](./data-dictionary.md) | Domain entities |
 | [api-contracts.md](./api-contracts.md) | Planned endpoints |

@@ -14,6 +14,10 @@ import {
   type SiteOnboardingFieldMappings,
 } from "@/lib/fastfield/site-onboarding-mapper";
 import { syncSiteToFastField } from "@/lib/fastfield/site-table-sync";
+import {
+  syncSiteInfoFromSubmission,
+  type SiteInfoSyncResult,
+} from "@/lib/fastfield/site-info-sync";
 import { makePublicId } from "@/lib/public-id";
 import { persistSiteOnboarding } from "@/lib/sites/service";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -73,6 +77,7 @@ export type IngestResult = {
   boilerPublicId: string | null;
   assetPublicIds: string[];
   fastFieldSyncStatus?: "pending" | "synced" | "failed";
+  siteInfoSync?: SiteInfoSyncResult;
   warning?: string;
 };
 
@@ -87,6 +92,32 @@ function inferPurpose(
     return "site_onboarding";
   }
   return "boiler_onboarding";
+}
+
+/**
+ * Site info upsert must not fail submission ingest. The sync itself returns
+ * failures, and this wrapper catches anything unexpected.
+ */
+async function runSiteInfoSync(
+  payload: Record<string, unknown>,
+): Promise<SiteInfoSyncResult> {
+  try {
+    return await syncSiteInfoFromSubmission(payload);
+  } catch (error) {
+    const reason =
+      error instanceof Error ? error.message : "Site info sync failed.";
+    console.error(`[fastfield site-info sync] unexpected error: ${reason}`);
+    return { status: "failed", reason };
+  }
+}
+
+function noteSiteInfoSyncFailure(
+  warning: string | undefined,
+  sync: SiteInfoSyncResult,
+): string | undefined {
+  if (sync.status !== "failed") return warning;
+  const note = `Site info Data Table sync failed: ${sync.reason}`;
+  return warning ? `${warning} ${note}` : note;
 }
 
 export async function ingestFastFieldSubmission(
@@ -112,6 +143,7 @@ export async function ingestFastFieldSubmission(
         boilerPublicId?: string;
         assetPublicIds?: string[];
         fastFieldSyncStatus?: "pending" | "synced" | "failed";
+        siteInfoSync?: SiteInfoSyncResult;
       };
     } | null;
     const prior = (existing.result_json ?? legacyPayload?.result ?? {}) as {
@@ -119,6 +151,7 @@ export async function ingestFastFieldSubmission(
       boilerPublicId?: string;
       assetPublicIds?: string[];
       fastFieldSyncStatus?: "pending" | "synced" | "failed";
+      siteInfoSync?: SiteInfoSyncResult;
     };
     return {
       eventId: existing.id,
@@ -130,6 +163,7 @@ export async function ingestFastFieldSubmission(
       boilerPublicId: prior.boilerPublicId ?? null,
       assetPublicIds: prior.assetPublicIds ?? [],
       fastFieldSyncStatus: prior.fastFieldSyncStatus,
+      siteInfoSync: prior.siteInfoSync,
     };
   }
 
@@ -161,6 +195,7 @@ export async function ingestFastFieldSubmission(
       boilerPublicId: string | null;
       assetPublicIds: string[];
       fastFieldSyncStatus?: "pending" | "synced" | "failed";
+      siteInfoSync?: SiteInfoSyncResult;
     };
 
     if (purpose === "site_onboarding") {
@@ -196,6 +231,10 @@ export async function ingestFastFieldSubmission(
       );
     }
 
+    const siteInfoSync = await runSiteInfoSync(payload);
+    created.siteInfoSync = siteInfoSync;
+    warning = noteSiteInfoSyncFailure(warning, siteInfoSync);
+
     await supabase
       .from("integration_events")
       .update({
@@ -215,6 +254,7 @@ export async function ingestFastFieldSubmission(
       boilerPublicId: created.boilerPublicId,
       assetPublicIds: created.assetPublicIds,
       fastFieldSyncStatus: created.fastFieldSyncStatus,
+      siteInfoSync,
       warning,
     };
   } catch (error) {
@@ -272,6 +312,7 @@ export async function reprocessIntegrationEvent(eventId: string) {
     boilerPublicId: string | null;
     assetPublicIds: string[];
     fastFieldSyncStatus?: "pending" | "synced" | "failed";
+    siteInfoSync?: SiteInfoSyncResult;
   };
 
   if (purpose === "site_onboarding") {
@@ -303,6 +344,10 @@ export async function reprocessIntegrationEvent(eventId: string) {
     throw new Error(`Unsupported form purpose "${purpose}".`);
   }
 
+  const siteInfoSync = await runSiteInfoSync(rawPayload);
+  created.siteInfoSync = siteInfoSync;
+  warning = noteSiteInfoSyncFailure(warning, siteInfoSync);
+
   await supabase
     .from("integration_events")
     .update({
@@ -323,6 +368,7 @@ export async function reprocessIntegrationEvent(eventId: string) {
     sitePublicId: created.sitePublicId,
     boilerPublicId: created.boilerPublicId,
     assetPublicIds: created.assetPublicIds,
+    siteInfoSync,
     fastFieldSyncStatus: created.fastFieldSyncStatus,
     warning,
   };
