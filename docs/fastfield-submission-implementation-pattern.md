@@ -266,6 +266,21 @@ After receiving FastField's Data Tables API documentation, implement either:
 Do not treat repeated POST requests as proven idempotent until this is
 validated.
 
+### DataTables v3 site info upsert
+
+A separate sync copies configured submission fields into the FastField Data
+Table named `site info`, using `GET /datatables/list`, lookup, paged
+`GET /items`, full-row `PUT`, and `POST`. It is not the legacy projector
+above. It does nothing until `FASTFIELD_SITE_INFO_SYNC_ENABLED=true` and the
+site key column plus field map are filled in. A failure is logged and does
+not fail `POST /api/fastfield/submissions`.
+
+Code: `apps/boilerops/src/lib/fastfield/site-info-sync.ts`  
+Configuration: `apps/boilerops/src/lib/fastfield/site-info-sync-config.ts`  
+What Michael must fill in: [fastfield-site-info-sync.md](./fastfield-site-info-sync.md)
+
+The legacy `sync_url` projector is unchanged.
+
 ## 11. Submission Response
 
 A processed Site Onboarding response follows:

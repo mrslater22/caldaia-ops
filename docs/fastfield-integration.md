@@ -70,7 +70,7 @@ Treat each item as pass / fail / workaround before Phase 1 coding of mappers.
 | IDs | How are document IDs and submission IDs exposed? | TBD | |
 | Prefill | Can external prefill / dispatch tokens be generated dynamically? | TBD | |
 | QR launch | Can QR scanning launch a form instance with parameters? | TBD | |
-| Data tables | Can cached tables be refreshed programmatically? | TBD | |
+| Data tables | Can cached tables be refreshed programmatically? | Partial | Site info row upsert is implemented behind `FASTFIELD_SITE_INFO_SYNC_ENABLED` (default off) and is a no-op until the key column and field map are set. See [fastfield-site-info-sync.md](./fastfield-site-info-sync.md). |
 | Limits | Rate limits and recommended retry behavior? | TBD | |
 | Attachments | Download auth flow and URL lifetime? | TBD | |
 

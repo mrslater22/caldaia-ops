@@ -55,6 +55,12 @@ function responseRecordId(value: unknown): string | null {
   return id == null ? null : String(id);
 }
 
+/**
+ * Legacy outbound projection: send the BoilerOps site row to the sync URL
+ * stored on `fastfield_data_tables`. This is not the DataTables v3 item
+ * upsert. Submission → "site info" upsert lives in `site-info-sync.ts` and
+ * does nothing until `FASTFIELD_SITE_INFO_SYNC_ENABLED` is set.
+ */
 export async function syncSiteToFastField(
   site: SiteForFastFieldSync,
 ): Promise<SiteSyncResult> {

@@ -57,6 +57,7 @@ export async function POST(request: Request) {
         boiler_public_id: result.boilerPublicId,
         asset_public_ids: result.assetPublicIds,
         fastfield_sync_status: result.fastFieldSyncStatus ?? null,
+        site_info_sync: result.siteInfoSync ?? null,
         urls: result.sitePublicId
           ? {
               site: `${appUrl}/i/site/${result.sitePublicId}`,
