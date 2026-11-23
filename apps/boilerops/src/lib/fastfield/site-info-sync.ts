@@ -3,7 +3,7 @@ import {
   FastFieldDataTableError,
   type DataTableClient,
 } from "./datatables/client.ts";
-import type { ParsedItem } from "./datatables/shape.ts";
+import type { ParsedItem, TableField } from "./datatables/shape.ts";
 import {
   loadSiteInfoSyncConfig,
   type SiteInfoSyncConfig,
@@ -12,13 +12,14 @@ import {
 /**
  * Upsert one "site info" Data Table row from a FastField submission.
  *
- * Recipe (DataTables API v3): resolve tableId from GET /datatables/list
- * (cached), POST /items/lookup by the configured key column, and on a hit
- * PUT the full merged row. A lookup miss inserts with POST. Lookup responses
- * that are not a clear hit or miss fall back to paged GET /items because
- * lookup requires the column to be a configured lookup key, and the
- * no-match response is not documented. Omitted columns are nulled by
- * FastField, so PUT always sends every column from the row that was read.
+ * Recipe (DataTables API v3): resolve listId from GET /datatables/list
+ * (cached), translate configured display names to config.fields keys, POST
+ * /items/lookup by that field key, and on a hit PUT the full merged row.
+ * Row `data` is keyed by those field GUIDs. A lookup miss inserts with POST.
+ * Lookup responses that are not a clear hit or miss fall back to paged
+ * GET /items. Omitted columns are nulled by FastField, so PUT always sends
+ * every column from the row that was read. A display name that is not in
+ * config.fields fails the sync before any write.
  *
  * Failures are returned, not thrown, so submission ingest can continue.
  */
@@ -99,10 +100,52 @@ async function performSync(
       return { status: "failed", reason: resolved.reason };
     }
 
+    const columns = configuredDisplayNames(config);
+    const translated = translateDisplayNames(resolved.fields, columns);
+    if (!translated.ok) {
+      console.error(
+        `[fastfield site-info sync] ${translated.reason} submissionId=${submissionId}`,
+      );
+      return {
+        status: "failed",
+        reason: translated.reason,
+        tableId: resolved.tableId,
+      };
+    }
+
+    const guidUpdates: Record<string, unknown> = {};
+    for (const [displayName, value] of Object.entries(updates)) {
+      const guid = translated.guids.get(displayName.trim());
+      if (!guid) {
+        const reason = `Site info update column ${JSON.stringify(displayName)} has no field key. No row was written.`;
+        console.error(
+          `[fastfield site-info sync] ${reason} submissionId=${submissionId}`,
+        );
+        return {
+          status: "failed",
+          reason,
+          tableId: resolved.tableId,
+        };
+      }
+      guidUpdates[guid] = value;
+    }
+    const keyGuid = translated.guids.get(config.keyColumn.trim());
+    if (!keyGuid) {
+      const reason = `Site info key column ${JSON.stringify(config.keyColumn)} has no field key. No row was written.`;
+      console.error(
+        `[fastfield site-info sync] ${reason} submissionId=${submissionId}`,
+      );
+      return {
+        status: "failed",
+        reason,
+        tableId: resolved.tableId,
+      };
+    }
+
     const found = await findExistingRow(
       client,
       resolved.tableId,
-      config.keyColumn,
+      keyGuid,
       keyValue,
     );
     if (found.kind === "failed") {
@@ -117,7 +160,7 @@ async function performSync(
     }
 
     if (found.kind === "found") {
-      const data = mergeRow(found.item.data, updates);
+      const data = mergeRow(found.item.data, guidUpdates);
       const updated = await client.updateItem(
         resolved.tableId,
         found.item.id,
@@ -146,7 +189,7 @@ async function performSync(
       };
     }
 
-    const created = await client.createItem(resolved.tableId, updates);
+    const created = await client.createItem(resolved.tableId, guidUpdates);
     if (created.status < 200 || created.status >= 300) {
       const reason = `POST /datatables/{tableId}/items failed with HTTP ${created.status}. No row was written.`;
       console.error(
@@ -188,10 +231,10 @@ type FoundRow =
 async function findExistingRow(
   client: DataTableClient,
   tableId: string,
-  keyColumn: string,
+  keyGuid: string,
   keyValue: unknown,
 ): Promise<FoundRow> {
-  const lookup = await client.lookupItem(tableId, keyColumn, keyValue);
+  const lookup = await client.lookupItem(tableId, keyGuid, keyValue);
   if (lookup.parsed.kind === "auth") {
     return {
       kind: "failed",
@@ -217,7 +260,7 @@ async function findExistingRow(
   console.info(
     `[fastfield site-info sync] lookup was not usable (HTTP ${lookup.status}, ${lookup.parsed.kind}); paging GET /items for the site key.`,
   );
-  return pageForKey(client, tableId, keyColumn, keyValue);
+  return pageForKey(client, tableId, keyGuid, keyValue);
 }
 
 async function fullRow(
@@ -248,7 +291,7 @@ async function fullRow(
 async function pageForKey(
   client: DataTableClient,
   tableId: string,
-  keyColumn: string,
+  keyGuid: string,
   keyValue: unknown,
 ): Promise<FoundRow> {
   const seenIds = new Set<string>();
@@ -288,7 +331,7 @@ async function pageForKey(
     for (const item of page.parsed) {
       if (item.id && seenIds.has(item.id)) continue;
       if (item.id) seenIds.add(item.id);
-      if (!cellMatches(item.data[keyColumn], keyValue)) continue;
+      if (!cellMatches(item.data[keyGuid], keyValue)) continue;
       const full = await fullRow(client, tableId, item);
       if (!full) {
         incomplete = true;
@@ -372,6 +415,56 @@ function clientFor(deps?: {
   if (deps?.env) return createDataTableClient({ env: deps.env });
   defaultClient ??= createDataTableClient();
   return defaultClient;
+}
+
+function configuredDisplayNames(config: SiteInfoSyncConfig): string[] {
+  return [...new Set([config.keyColumn, ...Object.keys(config.fieldMap)])]
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+}
+
+function translateDisplayNames(
+  fields: TableField[],
+  displayNames: string[],
+): { ok: true; guids: Map<string, string> } | { ok: false; reason: string } {
+  if (fields.length === 0) {
+    return {
+      ok: false,
+      reason:
+        "The site info list entry has no config.fields, so column display names cannot be translated to field keys. No row was written.",
+    };
+  }
+
+  const byName = new Map<string, string>();
+  const duplicates: string[] = [];
+  for (const field of fields) {
+    const name = field.displayName.trim();
+    if (!name || !field.key) continue;
+    if (byName.has(name)) duplicates.push(name);
+    else byName.set(name, field.key);
+  }
+  if (duplicates.length > 0) {
+    return {
+      ok: false,
+      reason: `Site info display name ${duplicates.map((name) => JSON.stringify(name)).join(", ")} appears more than once in config.fields. No row was written.`,
+    };
+  }
+
+  const missing = displayNames.filter((name) => !byName.has(name));
+  if (missing.length > 0) {
+    const known = [...byName.keys()].sort();
+    return {
+      ok: false,
+      reason: `Site info column display name ${missing.map((name) => JSON.stringify(name)).join(", ")} is not in config.fields. Known display names: ${known.length > 0 ? known.join(", ") : "(none)"}. No row was written.`,
+    };
+  }
+
+  const guids = new Map<string, string>();
+  for (const name of displayNames) {
+    const guid = byName.get(name);
+    if (guid) guids.set(name, guid);
+  }
+  return { ok: true, guids };
 }
 
 function mergeRow(

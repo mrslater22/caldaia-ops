@@ -64,31 +64,36 @@ export const HIGH_PRESSURE_FORM_NAMES = [
 
 /**
  * Column display name to add on the FastField site info table.
- * Override with FASTFIELD_HP_VISIT_ID_COLUMN if the live column differs.
- * This name is not written by itself. The site-info field map must point
- * this column at the site visit submission key (default `site_visit_id`).
+ * The live table does not have this column yet. Override with
+ * FASTFIELD_HP_VISIT_ID_COLUMN after it exists. This name is not written
+ * by itself. The site-info field map must point the new column at the
+ * site visit submission key (default `site_visit_id`).
  */
 export const SITE_VISIT_ID_COLUMN = "Site Visit ID";
 
 /**
- * Suggested key column when the live table still uses the legacy projector
- * column `bo_siteid`. Confirm the display name before setting the env var.
+ * Live site-info lookup key (`isLookupKey` on display name `site_code`).
+ * High Pressure still resolves the BoilerOps site by `bo_siteid` first and
+ * only falls back to `site_code`. A submission that sends only `bo_siteid`
+ * does not put `site_code` on the site-info payload.
  */
-export const SUGGESTED_SITE_INFO_KEY_COLUMN = "bo_siteid";
+export const SUGGESTED_SITE_INFO_KEY_COLUMN = "site_code";
 
 /**
  * Suggested FASTFIELD_SITE_INFO_FIELD_MAP. Not applied automatically.
- * Keys are column display names. Values are submission field keys.
- * Confirm every display name against the live table before use.
+ * Keys are the live column display names. Values are submission field keys.
+ * `site_id`, `job_num`, and `bo_qrcode` are on the table and are omitted
+ * here because this ingest does not have submission fields for them.
+ * `Site Visit ID` is not on the table yet. Do not add it to the map until
+ * the column exists; a missing display name fails the sync and writes nothing.
  */
 export const SUGGESTED_LEGACY_SITE_INFO_FIELD_MAP: Record<string, string> = {
-  bo_siteid: HIGH_PRESSURE_FIELD_KEYS.sitePublicId,
   site_code: HIGH_PRESSURE_FIELD_KEYS.siteCode,
+  bo_siteid: HIGH_PRESSURE_FIELD_KEYS.sitePublicId,
   va_loc: HIGH_PRESSURE_FIELD_KEYS.facilityName,
   va_contact: HIGH_PRESSURE_FIELD_KEYS.contactName,
   va_contact_email: HIGH_PRESSURE_FIELD_KEYS.contactEmail,
   va_contact_phone: HIGH_PRESSURE_FIELD_KEYS.contactPhone,
-  [SITE_VISIT_ID_COLUMN]: HIGH_PRESSURE_FIELD_KEYS.siteVisitId,
 };
 
 export type DeviceFormDefinition = {

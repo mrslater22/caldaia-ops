@@ -277,9 +277,10 @@ not fail `POST /api/fastfield/submissions`.
 
 Code: `apps/boilerops/src/lib/fastfield/site-info-sync.ts`  
 Configuration: `apps/boilerops/src/lib/fastfield/site-info-sync-config.ts`  
+Auth: `apps/boilerops/src/lib/fastfield/auth.ts` (`FastField-API-Key` and `X-Gatekeeper-SessionToken`)  
 What Michael must fill in: [fastfield-site-info-sync.md](./fastfield-site-info-sync.md)
 
-The legacy `sync_url` projector is unchanged.
+The legacy `sync_url` projector is unchanged. It still reads `FASTFIELD_API_KEY` and `FASTFIELD_SESSION_TOKEN`, with its own header names.
 
 ## 11. Submission Response
 

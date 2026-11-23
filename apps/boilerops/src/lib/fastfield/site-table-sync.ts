@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { createServiceClient } from "@/lib/supabase/server";
+import { legacyProjectorHeaders } from "./auth.ts";
 
 export type SiteForFastFieldSync = {
   id: string;
@@ -130,22 +131,7 @@ export async function syncSiteToFastField(
     };
   }
 
-  const headers = new Headers({ "content-type": "application/json" });
-  const apiKey = process.env.FASTFIELD_API_KEY?.trim();
-  const sessionToken = process.env.FASTFIELD_SESSION_TOKEN?.trim();
-  if (apiKey) {
-    headers.set(
-      process.env.FASTFIELD_API_KEY_HEADER?.trim() || "x-api-key",
-      apiKey,
-    );
-  }
-  if (sessionToken) {
-    headers.set(
-      process.env.FASTFIELD_SESSION_TOKEN_HEADER?.trim() ||
-        "x-session-token",
-      sessionToken,
-    );
-  }
+  const headers = legacyProjectorHeaders(process.env);
 
   try {
     const response = await fetch(syncUrl, {

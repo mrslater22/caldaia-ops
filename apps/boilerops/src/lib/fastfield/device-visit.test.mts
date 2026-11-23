@@ -387,11 +387,13 @@ describe("High Pressure form identification", () => {
 
   test("leaves the live site-info map empty and documents the visit column", () => {
     assert.deepEqual(SITE_INFO_FIELD_MAP, {});
-    assert.equal(SUGGESTED_SITE_INFO_KEY_COLUMN, "bo_siteid");
+    assert.equal(SUGGESTED_SITE_INFO_KEY_COLUMN, "site_code");
     assert.equal(
-      SUGGESTED_LEGACY_SITE_INFO_FIELD_MAP[SITE_VISIT_ID_COLUMN],
-      HIGH_PRESSURE_FIELD_KEYS.siteVisitId,
+      SUGGESTED_LEGACY_SITE_INFO_FIELD_MAP.site_code,
+      HIGH_PRESSURE_FIELD_KEYS.siteCode,
     );
+    assert.equal(SITE_VISIT_ID_COLUMN in SUGGESTED_LEGACY_SITE_INFO_FIELD_MAP, false);
+    assert.equal(SITE_VISIT_ID_COLUMN, "Site Visit ID");
   });
 });
 

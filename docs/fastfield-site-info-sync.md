@@ -23,13 +23,9 @@ top-level payload before this sync runs, so the field map can write the
 new visit ID column. The map is still empty until you set it. Admin →
 Sites does not call this sync. See [hp-device-e2e-test.md](./hp-device-e2e-test.md).
 
-The credential section below still matches the client on this branch
-(`Ocp-Apim-Subscription-Key` and a bearer user token). The gateway ignores
-that subscription header. For the High Pressure site table write, use the
-auth vars in the High Pressure checklist (`FASTFIELD_API_KEY`,
-`FASTFIELD_USERNAME`, `FASTFIELD_PASSWORD`, and maybe
-`FASTFIELD_SESSION_TOKEN`) and merge the DataTables auth-fix PR first.
-This branch does not change the client.
+High Pressure site-table writes use the credentials in the section below:
+`FASTFIELD_API_KEY`, `FASTFIELD_USERNAME`, `FASTFIELD_PASSWORD`, and
+optionally `FASTFIELD_SESSION_TOKEN`.
 
 - A skipped or failed sync does not change the HTTP status of
   `POST /api/fastfield/submissions`. The response field `site_info_sync`
@@ -51,23 +47,48 @@ Fill these in either place. Env overrides the module.
 | Setting | Module constant | Env var |
 | --- | --- | --- |
 | Enable (default off) | — | `FASTFIELD_SITE_INFO_SYNC_ENABLED=true` |
-| Table name | `SITE_INFO_TABLE_NAME` (`site info`) | `FASTFIELD_SITE_INFO_TABLE_NAME` |
-| Site key column | `SITE_INFO_KEY_COLUMN` (empty) | `FASTFIELD_SITE_INFO_KEY_COLUMN` |
+| Table name | `SITE_INFO_TABLE_NAME` (`Site Info`) | `FASTFIELD_SITE_INFO_TABLE_NAME` |
+| Site key column | `SITE_INFO_KEY_COLUMN` (`site_code`) | `FASTFIELD_SITE_INFO_KEY_COLUMN` |
 | Field map | `SITE_INFO_FIELD_MAP` (empty) | `FASTFIELD_SITE_INFO_FIELD_MAP` |
 
 Module file: `apps/boilerops/src/lib/fastfield/site-info-sync-config.ts`.
 
-1. **Table name.** Confirm the exact `name` from `GET /datatables/list`,
-   including capitalization and spaces. The code default is `site info`.
-   Matching is case-sensitive.
-2. **Key column.** The exact site info **column display name** that
-   identifies one site. Not `fields[].key`. Leave it blank until you know it.
+1. **Table name.** The live table `name` is `Site Info`. The code default
+   is that string. Matching trims and ignores case, so `site info` still
+   selects it. The row id is `listId` (this account:
+   `bae377fe-a4e9-4b70-b424-83b5d0e5a592`). `dataTableId` and `id` are
+   fallbacks when `listId` is absent. There is no `id` on the live list
+   entry.
+2. **Key column.** The lookup key display name is `site_code`
+   (`isLookupKey: true`). The default is `site_code`. Row `data` is keyed
+   by `config.fields[].key` (a 32-hex GUID), not by the display name. The
+   client translates display names to those keys before lookup, PUT, and
+   POST. A configured display name that is not in `config.fields` fails
+   the sync and writes nothing.
 3. **Field map.** JSON object whose keys are site info column display names
    and whose values are top-level submission field keys:
 
    ```json
-   {"Column display name":"submission_field_key"}
+   {
+     "site_code": "site_code",
+     "bo_siteid": "bo_siteid",
+     "va_loc": "facility_name",
+     "va_contact": "contact_name",
+     "va_contact_email": "contact_email",
+     "va_contact_phone": "contact_phone"
+   }
    ```
+
+   Live display names also include `site_id`, `job_num`, and `bo_qrcode`.
+   This ingest has no submission fields for those, so they stay off the map.
+   There is no `Site Visit ID` column yet. Add that column in FastField
+   before putting it in the map (`"Site Visit ID": "site_visit_id"`).
+   Including it early fails the sync because the display name is missing.
+
+   High Pressure resolves the BoilerOps site from `bo_siteid` first and
+   uses `site_code` only when the public id is absent. `payloadForSiteInfoSync`
+   copies `site_code` only when the submission already has one, so a form
+   that sends only `bo_siteid` will not satisfy a `site_code` lookup.
 
    On insert, every required column must be present. Lookup-key columns are
    required by FastField. Omitted non-required columns are stored as null.
@@ -75,29 +96,78 @@ Module file: `apps/boilerops/src/lib/fastfield/site-info-sync-config.ts`.
    existing column is sent back unchanged. A blank or missing submission
    field does not clear a column.
 4. **Credentials**, in the server environment only (Vercel / `.env.local`),
-   never in git:
-   - `FASTFIELD_SUBSCRIPTION_KEY` → `Ocp-Apim-Subscription-Key`
-   - `FASTFIELD_USER_TOKEN` → `Authorization: Bearer`
-   These are the same values that already work for GET submissions. They are
-   not `FASTFIELD_WEBHOOK_SECRET`, `FASTFIELD_API_KEY`, or
-   `FASTFIELD_SESSION_TOKEN`.
-5. **`X-Gatekeeper-SessionToken` (optional).** The DataTables PDFs name this
-   header and do not say whether it is the same value as the Bearer token.
-   - Unset: the header is not sent.
-   - `bearer` or `user-token`: send `FASTFIELD_USER_TOKEN` in that header too.
-   - Any other value: send that value as the header.
-6. Set `FASTFIELD_SITE_INFO_SYNC_ENABLED=true` only after 1–4 are known.
-   Accepted values: `true`, `1`, `yes`, `on`.
+   never in git. The DataTables gateway reads `FastField-API-Key`. It does
+   not read `Ocp-Apim-Subscription-Key` or `?subscription-key=`.
+
+   | Variable | Role |
+   | --- | --- |
+   | `FASTFIELD_API_KEY` | Required. Sent as `FastField-API-Key` on `/authenticate` and every DataTables call. This is the same variable the legacy projector reads. |
+   | `FASTFIELD_USERNAME` | FastField portal email. With the password, HTTP Basic user on `POST /authenticate`. |
+   | `FASTFIELD_PASSWORD` | HTTP Basic password on `POST /authenticate`. Set both username and password, or neither. |
+   | `FASTFIELD_SESSION_TOKEN` | Optional pre-issued session. Sent as `X-Gatekeeper-SessionToken` until a DataTables call returns HTTP 401. Same variable the legacy projector reads. |
+
+   Session precedence, per process:
+
+   1. Cached `sessionToken` from `POST /services/v3/authenticate` in this
+      process. When the JSON includes `sessionExpiration` or `sessionExpires`
+      (ISO-8601 or epoch seconds/milliseconds), the cache is refreshed 60
+      seconds before that time. When those fields are absent, the token stays
+      cached until a DataTables call returns HTTP 401.
+   2. Otherwise, if `FASTFIELD_SESSION_TOKEN` is set, send it and do not call
+      `/authenticate` yet. It has no known expiry.
+   3. Otherwise `POST /authenticate` with `FastField-API-Key`,
+      `Authorization: Basic` of `FASTFIELD_USERNAME:FASTFIELD_PASSWORD`,
+      `Content-Type: application/json`, and a JSON body `{}`. A request
+      with no body returns HTTP 411. The response fields used are
+      `sessionToken` and `sessionExpiration`. A live session lasts 24
+      hours. The client logs only the shape of `sessionExpiration`
+      (`iso-8601`, epoch, or `absent`), never the timestamp. When the
+      field is absent or unparsed, the cache lasts 24 hours. The response
+      body is not logged.
+
+   On HTTP 401 from a DataTables call the rejected token is dropped. If
+   username and password are set, the client calls `/authenticate` once and
+   retries that DataTables call once. A second 401 fails the sync and does
+   not write a row. `/authenticate` itself is not retried. If the only
+   session source was `FASTFIELD_SESSION_TOKEN`, that 401 is returned
+   immediately, because a new session cannot be created.
+
+   `FASTFIELD_API_KEY_HEADER` and `FASTFIELD_SESSION_TOKEN_HEADER` apply only
+   to the legacy projector (`x-api-key` and `x-session-token` by default).
+   The DataTables client does not use those names.
+
+   Already set in Vercel Preview and Production for the projector:
+   `FASTFIELD_API_KEY` and `FASTFIELD_SESSION_TOKEN`. Not set there, and
+   required before this client can mint its own session:
+   `FASTFIELD_USERNAME` and `FASTFIELD_PASSWORD`. This change does not write
+   either environment.
+
+   Ignored, and safe to delete: `FASTFIELD_SUBSCRIPTION_KEY`,
+   `FASTFIELD_USER_TOKEN`, `FASTFIELD_GATEKEEPER_SESSION_TOKEN`. An earlier
+   client sent those as `Ocp-Apim-Subscription-Key`, `Authorization: Bearer`,
+   and an optional gatekeeper value. The gateway does not read the
+   subscription key. The long primary key is not a session token.
+
+   These are not `FASTFIELD_WEBHOOK_SECRET`.
+5. Set `FASTFIELD_SITE_INFO_SYNC_ENABLED=true` only after 1–4 are known.
+   Accepted values: `true`, `1`, `yes`, `on`. A missing API key or session
+   source fails that sync with an error naming the missing variables and
+   does not call FastField. Ingest still returns success.
 
 `FASTFIELD_DATATABLES_BASE_URL` defaults to
 `https://api.fastfieldforms.com/services/v3`.
 
 ## Behavior
 
-1. `GET /datatables/list` and cache `dataTableId` (or `id` if that is all the
-   list body provides) for the configured name.
-2. `POST /datatables/{tableId}/items/lookup` with
-   `{ "data": { "<key column>": <value> } }`.
+1. Resolve a session as described above, then `GET /datatables/list` and
+   cache `listId` (falling back to `dataTableId`, then `id`) for the
+   configured name. Matching trims and ignores case. `config.fields` from
+   that list entry supplies the GUID for each display name. A 401 on any
+   DataTables call refreshes the session once when username and password
+   are set, then retries that call once.
+2. `POST /datatables/{listId}/items/lookup` with
+   `{ "data": { "<field GUID>": <value> } }`. The GUID is
+   `config.fields[].key` for the key column's display name.
 3. A single row with an id and a column object is a hit. The submission
    values are merged onto that full object and sent as
    `PUT /datatables/{tableId}/items` with `{ "id", "data" }`. A partial `data`
@@ -136,28 +206,43 @@ Do this only after the secrets are in the server environment. Do not paste
 secrets into the repo, into logs, or into this doc. The automated tests mock
 `fetch` and do not call FastField.
 
-1. Confirm list and the table name:
+1. Create a session, then list tables. Use placeholders here. Do not paste
+   real keys, passwords, or session tokens into the repo, a ticket, or logs.
+   `YOUR_API_KEY` is the `FASTFIELD_API_KEY` value (the API token the gateway
+   accepts as `FastField-API-Key`). `user@example.com` is the FastField
+   portal email.
 
    ```bash
-   curl -sS "$FASTFIELD_DATATABLES_BASE_URL/datatables/list" \
-     -H "Ocp-Apim-Subscription-Key: $FASTFIELD_SUBSCRIPTION_KEY" \
-     -H "Authorization: Bearer $FASTFIELD_USER_TOKEN"
+   curl -sS -X POST \
+     "https://api.fastfieldforms.com/services/v3/authenticate" \
+     -H "FastField-API-Key: YOUR_API_KEY" \
+     -H "Authorization: Basic $(printf '%s' 'user@example.com:YOUR_PASSWORD' | base64)" \
+     -H "Accept: application/json" \
+     -H "Content-Type: application/json" \
+     -d '{}'
+
+   curl -sS "https://api.fastfieldforms.com/services/v3/datatables/list" \
+     -H "FastField-API-Key: YOUR_API_KEY" \
+     -H "X-Gatekeeper-SessionToken: YOUR_SESSION_TOKEN" \
+     -H "Accept: application/json"
    ```
 
-   If that returns 401, retry with `-H "X-Gatekeeper-SessionToken: $FASTFIELD_USER_TOKEN"`
-   or with a distinct session token. Set `FASTFIELD_GATEKEEPER_SESSION_TOKEN`
-   to match whichever call works. Compare the logged
-   `first list success response shape` line with the property names the
-   parser expects (`name`, `dataTableId`).
+   Copy `sessionToken` from the first JSON into `YOUR_SESSION_TOKEN` in the
+   shell only. Do not send `Ocp-Apim-Subscription-Key`, `Authorization: Bearer`,
+   or `?subscription-key=`. A list call with only `FastField-API-Key` gets
+   past the gateway and then returns 401 until the session header is present.
+   Compare the logged `first list success response shape` line with the
+   property names the parser expects (`name`, `dataTableId`).
 
 2. Pick the key column from the portal or from that list payload's field
    display names. Confirm whether it is a lookup key. Set the env vars, then
    look up a known value:
 
    ```bash
-   curl -sS -X POST "$FASTFIELD_DATATABLES_BASE_URL/datatables/TABLE_ID/items/lookup" \
-     -H "Ocp-Apim-Subscription-Key: $FASTFIELD_SUBSCRIPTION_KEY" \
-     -H "Authorization: Bearer $FASTFIELD_USER_TOKEN" \
+   curl -sS -X POST "https://api.fastfieldforms.com/services/v3/datatables/TABLE_ID/items/lookup" \
+     -H "FastField-API-Key: YOUR_API_KEY" \
+     -H "X-Gatekeeper-SessionToken: YOUR_SESSION_TOKEN" \
+     -H "Accept: application/json" \
      -H "Content-Type: application/json" \
      -d '{"data":{"YOUR_KEY_COLUMN":"YOUR_VALUE"}}'
    ```
@@ -169,9 +254,10 @@ secrets into the repo, into logs, or into this doc. The automated tests mock
    whether the body is a bare array or wrapped (`items`, `data`, …):
 
    ```bash
-   curl -sS "$FASTFIELD_DATATABLES_BASE_URL/datatables/TABLE_ID/items?pageSize=100&pageNumber=1" \
-     -H "Ocp-Apim-Subscription-Key: $FASTFIELD_SUBSCRIPTION_KEY" \
-     -H "Authorization: Bearer $FASTFIELD_USER_TOKEN"
+   curl -sS "https://api.fastfieldforms.com/services/v3/datatables/TABLE_ID/items?pageSize=100&pageNumber=1" \
+     -H "FastField-API-Key: YOUR_API_KEY" \
+     -H "X-Gatekeeper-SessionToken: YOUR_SESSION_TOKEN" \
+     -H "Accept: application/json"
    ```
 
 4. Deploy with the flag still off and submit a form. Ingest should succeed
@@ -190,7 +276,6 @@ secrets into the repo, into logs, or into this doc. The automated tests mock
   display names?
 - Exact JSON for list, lookup hit, lookup miss, and paged items, including
   the no-match status. The parsers are defensive on purpose.
-- Whether `X-Gatekeeper-SessionToken` must equal the Bearer token.
 - Whether `pageNumber` is 0-based or 1-based, and what the last page looks like.
 - Whether a lookup HTTP 404 always means "no row", or sometimes "this column
   is not a lookup key".

@@ -159,14 +159,14 @@ encoding today. Existing printed codes stay valid.
 
 ### Site info visit ID column
 
-Add a column whose **display name** is `Site Visit ID`, unless you set
-`FASTFIELD_HP_VISIT_ID_COLUMN` to a different display name. Text is enough.
-The column is not a lookup key. The site key column remains the column that
-identifies the site.
+The live Site Info table has no visit ID column. Add one whose **display
+name** is `Site Visit ID`, unless you set `FASTFIELD_HP_VISIT_ID_COLUMN`
+to a different display name. Text is enough. The column is not a lookup
+key. The site key column is `site_code`.
 
-This display name is a placeholder until you confirm it against
-`GET /datatables/list` (or the table builder). The code default does not
-write the column. The field map does.
+Do not put that display name in `FASTFIELD_SITE_INFO_FIELD_MAP` until the
+column is on the table. A missing display name fails the sync and does
+not write a row. The code default does not write the column by itself.
 
 ## Submit and what to check
 
@@ -330,34 +330,36 @@ that contains the auth fix.
 | `FASTFIELD_USERNAME` | Not required | Required after the auth-fix merge. FastField account email. HTTP Basic username for `POST /services/v3/authenticate` |
 | `FASTFIELD_PASSWORD` | Not required | Required after the auth-fix merge. HTTP Basic password for that login. The response `sessionToken` is sent as `X-Gatekeeper-SessionToken` |
 | `FASTFIELD_SITE_INFO_SYNC_ENABLED` | Not required. Leave unset and the column is skipped | Required. Set to `true` only after the auth-fix is deployed and the key column and field map below are confirmed |
-| `FASTFIELD_SITE_INFO_KEY_COLUMN` | Not required | Required. Exact column **display name** that identifies the site. If the live table still uses the legacy projector names, use `bo_siteid` and confirm with one lookup before the client is watching |
-| `FASTFIELD_SITE_INFO_FIELD_MAP` | Not required | Required. JSON below |
-| `FASTFIELD_SITE_INFO_TABLE_NAME` | Not required | Optional. Default is `site info`. Set it only if `GET /datatables/list` spells the table differently |
+| `FASTFIELD_SITE_INFO_KEY_COLUMN` | Not required | `site_code`. That display name is the live lookup key. The code default is already `site_code` |
+| `FASTFIELD_SITE_INFO_FIELD_MAP` | Not required | Required before the flag. JSON below. Do not include `Site Visit ID` until that column exists |
+| `FASTFIELD_SITE_INFO_TABLE_NAME` | Not required | Optional. Default is `Site Info`. Matching ignores case and surrounding spaces |
 | `FASTFIELD_DATATABLES_BASE_URL` | Not required | Optional. Default `https://api.fastfieldforms.com/services/v3` |
 | `FASTFIELD_HP_FORM_ID` | Optional | Optional |
 | `FASTFIELD_HP_FORM_NAME` | Optional extra accepted name | Optional |
 | `FASTFIELD_HP_FIELD_MAP` | Optional | Optional. If you change `siteVisitId`, the field map value must use that new submission key |
 | `FASTFIELD_HP_VISIT_ID_COLUMN` | Optional. Changes the warning text and the column name you document. Default `Site Visit ID` | Optional. Does not write the column by itself |
 
-Field map to set when the legacy column names are confirmed. Keys are
-column display names. The last entry is the new visit column:
+Field map for the live display names. Keys are column display names.
+`site_id`, `job_num`, and `bo_qrcode` are on the table and are left out
+because the submission does not carry them. Add `"Site Visit ID":
+"site_visit_id"` only after that column exists. Until then the map must
+not name it, or the sync fails and writes nothing.
 
 ```json
 {
-  "bo_siteid": "bo_siteid",
   "site_code": "site_code",
+  "bo_siteid": "bo_siteid",
   "va_loc": "facility_name",
   "va_contact": "contact_name",
   "va_contact_email": "contact_email",
-  "va_contact_phone": "contact_phone",
-  "Site Visit ID": "site_visit_id"
+  "va_contact_phone": "contact_phone"
 }
 ```
 
-`FASTFIELD_SITE_INFO_KEY_COLUMN=bo_siteid` pairs with that map. If a
-display name differs, change the JSON key, not the submission field on the
-right, except for the visit entry which must stay `site_visit_id` unless
-`FASTFIELD_HP_FIELD_MAP` changed `siteVisitId`.
+`FASTFIELD_SITE_INFO_KEY_COLUMN=site_code` pairs with that map. High
+Pressure still finds the BoilerOps site by `bo_siteid` first. `site_code`
+is copied onto the site-info payload only when the form already sent it,
+so a submission that has only `bo_siteid` will skip the `site_code` lookup.
 
 On update, mapped columns overwrite and every other column already on the
 row is sent back. A blank submission field does not clear a column. On

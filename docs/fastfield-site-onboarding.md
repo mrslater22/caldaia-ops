@@ -111,6 +111,12 @@ FASTFIELD_API_KEY_HEADER=x-api-key
 FASTFIELD_SESSION_TOKEN_HEADER=x-session-token
 ```
 
+`FASTFIELD_API_KEY` and `FASTFIELD_SESSION_TOKEN` are the same variables the
+DataTables site-info client reads. The header-name overrides apply only to
+this projector. The site-info client always sends `FastField-API-Key` and
+`X-Gatekeeper-SessionToken`. See
+[fastfield-site-info-sync.md](./fastfield-site-info-sync.md).
+
 Store the table-specific configuration in Supabase:
 
 ```sql
