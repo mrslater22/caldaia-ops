@@ -34,10 +34,7 @@ If you can’t find it visually, use the API list below — each form object inc
 
 Base URL: `https://api.fastfieldforms.com/services`
 
-Typical auth headers (from FastField integrations):
-
-- `FastField-API-Key: <your api key>`
-- Session token header as required by your account (`Authorization: Bearer …` and/or `X-Gatekeeper-SessionToken`)
+Auth is `POST /services/v3/authenticate` with `FastField-API-Key` and HTTP Basic, then `FastField-API-Key` plus `X-Gatekeeper-SessionToken` on later calls. The site-info client does this. See [fastfield-site-info-sync.md](./fastfield-site-info-sync.md).
 
 Useful calls:
 

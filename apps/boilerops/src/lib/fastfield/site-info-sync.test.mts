@@ -8,8 +8,8 @@ import {
   syncSiteInfoFromSubmission,
 } from "./site-info-sync.ts";
 
-const SUBSCRIPTION_KEY = "SUBKEY_SHOULD_NOT_BE_LOGGED";
-const USER_TOKEN = "USERTOKEN_SHOULD_NOT_BE_LOGGED";
+const API_KEY = "APIKEY_SHOULD_NOT_BE_LOGGED";
+const SESSION_TOKEN = "SESSION_SHOULD_NOT_BE_LOGGED";
 const SITE_CODE = "CAP-SHOULD_NOT_BE_LOGGED";
 
 type Env = Record<string, string | undefined>;
@@ -25,6 +25,10 @@ const ENV_KEYS = [
   "FASTFIELD_SITE_INFO_TABLE_NAME",
   "FASTFIELD_SITE_INFO_KEY_COLUMN",
   "FASTFIELD_SITE_INFO_FIELD_MAP",
+  "FASTFIELD_API_KEY",
+  "FASTFIELD_SESSION_TOKEN",
+  "FASTFIELD_USERNAME",
+  "FASTFIELD_PASSWORD",
   "FASTFIELD_SUBSCRIPTION_KEY",
   "FASTFIELD_USER_TOKEN",
   "FASTFIELD_GATEKEEPER_SESSION_TOKEN",
@@ -46,8 +50,8 @@ function readyEnv(extra: Env = {}): Env {
       "Site Code": "site_code",
       Phone: "phone",
     }),
-    FASTFIELD_SUBSCRIPTION_KEY: SUBSCRIPTION_KEY,
-    FASTFIELD_USER_TOKEN: USER_TOKEN,
+    FASTFIELD_API_KEY: API_KEY,
+    FASTFIELD_SESSION_TOKEN: SESSION_TOKEN,
     FASTFIELD_DATATABLES_BASE_URL: "https://api.fastfieldforms.com/services/v3",
     ...extra,
   };
@@ -124,8 +128,8 @@ function loggedText(): string {
 }
 
 function assertNoSecrets(text: string) {
-  assert.equal(text.includes(SUBSCRIPTION_KEY), false);
-  assert.equal(text.includes(USER_TOKEN), false);
+  assert.equal(text.includes(API_KEY), false);
+  assert.equal(text.includes(SESSION_TOKEN), false);
   assert.equal(text.includes(SITE_CODE), false);
   assert.equal(text.includes("keep me"), false);
 }
@@ -194,15 +198,10 @@ describe("site info DataTables sync", { concurrency: false }, () => {
     assert.equal(second.status, "updated");
     assert.equal(calls.filter((call) => call.url.endsWith("/datatables/list")).length, 1);
     assert.equal(lookups, 2);
-    assert.equal(
-      calls[0].headers.get("ocp-apim-subscription-key"),
-      SUBSCRIPTION_KEY,
-    );
-    assert.equal(
-      calls[0].headers.get("authorization"),
-      `Bearer ${USER_TOKEN}`,
-    );
-    assert.equal(calls[0].headers.get("x-gatekeeper-sessiontoken"), null);
+    assert.equal(calls[0].headers.get("fastfield-api-key"), API_KEY);
+    assert.equal(calls[0].headers.get("x-gatekeeper-sessiontoken"), SESSION_TOKEN);
+    assert.equal(calls[0].headers.get("authorization"), null);
+    assert.equal(calls[0].headers.get("ocp-apim-subscription-key"), null);
     assert.match(calls[1].url, /\/datatables\/table-9\/items\/lookup$/);
     assertNoSecrets(loggedText());
     assert.match(loggedText(), /first list success response shape/);
@@ -402,7 +401,7 @@ describe("site info DataTables sync", { concurrency: false }, () => {
     const env = readyEnv();
     const listFailure = clientFor(env, (call) => {
       if (call.url.endsWith("/datatables/list")) {
-        return { status: 500, body: { message: "boom", token: USER_TOKEN } };
+        return { status: 500, body: { message: "boom", token: SESSION_TOKEN } };
       }
       throw new Error(`unexpected ${call.method} ${call.url}`);
     });
@@ -426,7 +425,7 @@ describe("site info DataTables sync", { concurrency: false }, () => {
         };
       }
       if (call.method === "PUT") {
-        return { status: 422, body: { message: "bad type", token: USER_TOKEN } };
+        return { status: 422, body: { message: "bad type", token: SESSION_TOKEN } };
       }
       throw new Error(`unexpected ${call.method} ${call.url}`);
     });
@@ -447,7 +446,7 @@ describe("site info DataTables sync", { concurrency: false }, () => {
       if (call.url.endsWith("/datatables/list")) {
         return { status: 200, body: listBody() };
       }
-      return { status: 500, body: { message: USER_TOKEN } };
+      return { status: 500, body: { message: SESSION_TOKEN } };
     });
     const searched = await syncSiteInfoFromSubmission(submission(), {
       client: searchFailure.client,
@@ -464,8 +463,10 @@ describe("site info DataTables sync", { concurrency: false }, () => {
     let fetches = 0;
     const missingCreds = createDataTableClient({
       env: readyEnv({
-        FASTFIELD_SUBSCRIPTION_KEY: "",
-        FASTFIELD_USER_TOKEN: "",
+        FASTFIELD_API_KEY: "",
+        FASTFIELD_SESSION_TOKEN: "",
+        FASTFIELD_USERNAME: "",
+        FASTFIELD_PASSWORD: "",
       }),
       fetchImpl: async () => {
         fetches += 1;
@@ -475,13 +476,16 @@ describe("site info DataTables sync", { concurrency: false }, () => {
     const unauthenticated = await syncSiteInfoFromSubmission(submission(), {
       client: missingCreds,
       env: readyEnv({
-        FASTFIELD_SUBSCRIPTION_KEY: " ",
-        FASTFIELD_USER_TOKEN: "",
+        FASTFIELD_API_KEY: " ",
+        FASTFIELD_SESSION_TOKEN: "",
+        FASTFIELD_USERNAME: "",
+        FASTFIELD_PASSWORD: "",
       }),
     });
     assert.equal(unauthenticated.status, "failed");
-    assert.match(unauthenticated.reason, /FASTFIELD_SUBSCRIPTION_KEY/);
-    assert.match(unauthenticated.reason, /FASTFIELD_USER_TOKEN/);
+    assert.match(unauthenticated.reason, /FASTFIELD_API_KEY/);
+    assert.match(unauthenticated.reason, /FASTFIELD_SESSION_TOKEN/);
+    assert.match(unauthenticated.reason, /FASTFIELD_USERNAME/);
     assert.equal(fetches, 0);
 
     const network = clientFor(env, () => {
@@ -523,51 +527,6 @@ describe("site info DataTables sync", { concurrency: false }, () => {
       false,
     );
 
-    assertNoSecrets(loggedText());
-  });
-
-  test("sends X-Gatekeeper-SessionToken only when configured", async () => {
-    const env = readyEnv({
-      FASTFIELD_GATEKEEPER_SESSION_TOKEN: "bearer",
-    });
-    const { calls, client } = clientFor(env, (call) => {
-      if (call.url.endsWith("/datatables/list")) {
-        return { status: 200, body: listBody() };
-      }
-      if (call.url.endsWith("/items/lookup")) {
-        return { status: 404, body: [] };
-      }
-      if (call.method === "POST") return { status: 201, body: {} };
-      throw new Error(`unexpected ${call.method} ${call.url}`);
-    });
-
-    const result = await syncSiteInfoFromSubmission(submission(), { client, env });
-    assert.equal(result.status, "created");
-    assert.equal(
-      calls[0].headers.get("x-gatekeeper-sessiontoken"),
-      USER_TOKEN,
-    );
-
-    const distinct = readyEnv({
-      FASTFIELD_GATEKEEPER_SESSION_TOKEN: "distinct-gate-token",
-    });
-    const second = clientFor(distinct, (call) => {
-      if (call.url.endsWith("/datatables/list")) {
-        return { status: 200, body: listBody() };
-      }
-      if (call.url.endsWith("/items/lookup")) return { status: 404, body: [] };
-      if (call.method === "POST") return { status: 201, body: {} };
-      throw new Error(`unexpected ${call.method} ${call.url}`);
-    });
-    await syncSiteInfoFromSubmission(submission(), {
-      client: second.client,
-      env: distinct,
-    });
-    assert.equal(
-      second.calls[0].headers.get("x-gatekeeper-sessiontoken"),
-      "distinct-gate-token",
-    );
-    assert.equal(loggedText().includes("distinct-gate-token"), false);
     assertNoSecrets(loggedText());
   });
 
