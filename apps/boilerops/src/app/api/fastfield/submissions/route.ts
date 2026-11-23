@@ -58,6 +58,16 @@ export async function POST(request: Request) {
         asset_public_ids: result.assetPublicIds,
         fastfield_sync_status: result.fastFieldSyncStatus ?? null,
         site_info_sync: result.siteInfoSync ?? null,
+        visit_public_id: result.visitPublicId,
+        site_visit_id: result.siteVisitId,
+        visit_created: result.visitCreated,
+        target_public_id: result.targetPublicId,
+        target_created: result.targetCreated,
+        device_test_public_id: result.deviceTestPublicId,
+        device_test_created: result.deviceTestCreated,
+        report_public_id: result.reportPublicId,
+        report_status: result.reportStatus,
+        report_device_count: result.reportDeviceCount,
         urls: result.sitePublicId
           ? {
               site: `${appUrl}/i/site/${result.sitePublicId}`,
@@ -86,7 +96,8 @@ export async function GET() {
     ok: true,
     endpoint: "/api/fastfield/submissions",
     methods: ["POST"],
-    purpose: "FastField form submission ingest (form-registry aware)",
+    purpose:
+      "FastField form submission ingest (form-registry aware, including High Pressure device visits)",
     auth: "Required. Send FASTFIELD_WEBHOOK_SECRET in the x-boilerops-secret header or as the HTTP Basic password.",
   });
 }

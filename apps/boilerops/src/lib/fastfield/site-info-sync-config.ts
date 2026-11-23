@@ -31,9 +31,13 @@ export const SITE_INFO_KEY_COLUMN = "";
  * Leave this empty until the columns are confirmed.
  * Override with `FASTFIELD_SITE_INFO_FIELD_MAP` (JSON object).
  *
- * Example shape only — do not uncomment until the names are real:
+ * Example shape only — do not uncomment until the names are real.
+ * High Pressure needs the visit ID column in this map once the display
+ * name is confirmed. The submission key is `site_visit_id` unless
+ * FASTFIELD_HP_FIELD_MAP overrides it. See docs/hp-device-e2e-test.md.
  * {
- *   "REPLACE_WITH_SITE_INFO_COLUMN": "REPLACE_WITH_SUBMISSION_FIELD_KEY"
+ *   "REPLACE_WITH_SITE_INFO_COLUMN": "bo_siteid",
+ *   "Site Visit ID": "site_visit_id"
  * }
  */
 export const SITE_INFO_FIELD_MAP: Readonly<Record<string, string>> = {};

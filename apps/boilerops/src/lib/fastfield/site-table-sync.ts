@@ -61,6 +61,11 @@ function responseRecordId(value: unknown): string | null {
  * stored on `fastfield_data_tables`. This is not the DataTables v3 item
  * upsert. Submission → "site info" upsert lives in `site-info-sync.ts` and
  * does nothing until `FASTFIELD_SITE_INFO_SYNC_ENABLED` is set.
+ *
+ * Admin → Sites create, update, and manual sync call only this function.
+ * A site visit does not exist at that moment, so this payload has no visit
+ * ID column. High Pressure ingest writes that column through the v3 upsert
+ * after the visit is created. Do not add the visit ID here.
  */
 export async function syncSiteToFastField(
   site: SiteForFastFieldSync,

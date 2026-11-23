@@ -51,6 +51,22 @@ export default function AdminDashboardPage() {
         </Link>
 
         <Link
+          href="/admin/site-visits"
+          className="rounded-xl border border-border bg-panel p-5 transition hover:border-accent"
+        >
+          <p className="text-xs font-medium tracking-wide text-accent uppercase">
+            Field
+          </p>
+          <h3 className="mt-2 text-base font-semibold text-foreground">
+            Site visits
+          </h3>
+          <p className="mt-2 text-sm text-muted">
+            Review High Pressure visits, the boiler or plant tested on each
+            one, and the site report those devices complete.
+          </p>
+        </Link>
+
+        <Link
           href="/admin/sites"
           className="rounded-xl border border-border bg-panel p-5 transition hover:border-accent"
         >
