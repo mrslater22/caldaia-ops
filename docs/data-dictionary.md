@@ -84,6 +84,26 @@ allowed Boiler and Plant targets before field work begins.
 `inspection_targets`. Composite foreign keys guarantee every selected target
 belongs to the same Site and organization as the job.
 
+## site_visits / site_visit_device_tests / site_visit_reports
+
+A field visit created from a per-device FastField form (High Pressure
+first). This is not an `inspection_job`. The visit is keyed by the site
+visit ID submitted with the form.
+
+| Table | Field | Notes |
+| --- | --- | --- |
+| site_visits | external_visit_id | FastField site visit ID. Unique per organization |
+| site_visits | public_id | BoilerOps id. Equals `external_visit_id` when that value was minted here (`visit_...`) |
+| site_visits | status | `open` or `report_ready` |
+| site_visit_device_tests | device_type | `high_pressure` today. `low_pressure` is allowed for the next form and is not implemented |
+| site_visit_device_tests | asset_key | Boiler or plant id from the form |
+| site_visit_device_tests | inspection_target_id | Boiler or plant target |
+| site_visit_device_tests | fastfield_submission_id | Unique. Webhook retries reuse this row |
+| site_visit_reports | site_visit_id | One report shell per visit |
+| site_visit_reports | summary_json | Device tests included in the site report |
+
+SQL: `supabase/migrations/20261123_site_visits.sql`
+
 ## inspections
 
 One inspection event.

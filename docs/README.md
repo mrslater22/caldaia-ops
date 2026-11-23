@@ -6,6 +6,7 @@
 | [architecture.md](./architecture.md) | Flows, services, storage, QR |
 | [fastfield-integration.md](./fastfield-integration.md) | Ingestion + Sprint 0 checklist |
 | [fastfield-site-info-sync.md](./fastfield-site-info-sync.md) | Gated DataTables v3 upsert into the site info table |
+| [hp-device-e2e-test.md](./hp-device-e2e-test.md) | High Pressure device-form test script, checklist, and Low Pressure plan |
 | [fastfield-submission-implementation-pattern.md](./fastfield-submission-implementation-pattern.md) | Repeatable Site Onboarding implementation pattern for future forms |
 | [data-dictionary.md](./data-dictionary.md) | Domain entities |
 | [api-contracts.md](./api-contracts.md) | Planned endpoints |
