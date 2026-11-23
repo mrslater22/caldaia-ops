@@ -35,9 +35,18 @@ leaves the other alone.
 
 High Pressure reuses the PR #8 upsert. After the visit is saved, ingest
 copies `site_visit_id` onto the top-level JSON and calls the existing
-`syncSiteInfoFromSubmission`. It does not add a second FastField client.
-The live field map in `site-info-sync-config.ts` is still empty, so
-production behavior stays a no-op until the env vars below are set.
+`syncSiteInfoFromSubmission`. This branch does not change the DataTables
+client. The client on this branch still sends `Ocp-Apim-Subscription-Key`,
+which the gateway ignores. A separate auth-fix PR replaces that with
+`FastField-API-Key`, `POST /services/v3/authenticate` (HTTP Basic
+email:password), and the returned `sessionToken` as
+`X-Gatekeeper-SessionToken`. The FastField site table write for this test
+depends on that auth-fix PR being merged first. The visit in BoilerOps does
+not.
+
+The live field map in `site-info-sync-config.ts` is still empty, so the
+sync stays a no-op until the flag, key column, and field map are set on a
+deployment that includes the auth fix.
 
 Do not replace the legacy projector today. Admin → Sites must keep working
 for site create and QR generation. Do not expect that screen to write the
@@ -300,23 +309,30 @@ Already present (leave them):
 
 | Name | HP test |
 | --- | --- |
-| `FASTFIELD_WEBHOOK_SECRET` | Required. Already set |
-| `FASTFIELD_API_KEY` | Not used by High Pressure ingest. Legacy projector only |
-| `FASTFIELD_SESSION_TOKEN` | Not used by High Pressure ingest. Legacy projector only |
+| `FASTFIELD_WEBHOOK_SECRET` | Required. Already set. Inbound webhook only |
+| `FASTFIELD_API_KEY` | Already set. Required for the FastField site table write after the auth-fix PR is merged. Sent as `FastField-API-Key` |
+| `FASTFIELD_SESSION_TOKEN` | Already set. The auth-fix may send this as `X-Gatekeeper-SessionToken` when it does not log in for a new token. Keep it. Confirm against that PR |
 | `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`, `AUTH_SECRET` | Required to open Admin → Site visits. Already set |
 | Supabase URL and service role | Required. Already set |
 
-Missing today. Set only what the column says.
+Do not set `FASTFIELD_SUBSCRIPTION_KEY`, `FASTFIELD_USER_TOKEN`, or
+`FASTFIELD_GATEKEEPER_SESSION_TOKEN` for this test. `Ocp-Apim-Subscription-Key`
+is ignored by the gateway. This High Pressure branch still calls the
+existing DataTables client and does not change that auth. The site table
+write works only after the auth-fix PR is merged and deployed with this
+branch.
+
+Missing today. Set only what the column says, and only on the deployment
+that contains the auth fix.
 
 | Name | HP visit in BoilerOps | FastField visit ID column |
 | --- | --- | --- |
-| `FASTFIELD_SITE_INFO_SYNC_ENABLED` | Not required. Leave unset and the column is skipped | Required. Set to `true` only after the key column and field map below are confirmed |
+| `FASTFIELD_USERNAME` | Not required | Required after the auth-fix merge. FastField account email. HTTP Basic username for `POST /services/v3/authenticate` |
+| `FASTFIELD_PASSWORD` | Not required | Required after the auth-fix merge. HTTP Basic password for that login. The response `sessionToken` is sent as `X-Gatekeeper-SessionToken` |
+| `FASTFIELD_SITE_INFO_SYNC_ENABLED` | Not required. Leave unset and the column is skipped | Required. Set to `true` only after the auth-fix is deployed and the key column and field map below are confirmed |
 | `FASTFIELD_SITE_INFO_KEY_COLUMN` | Not required | Required. Exact column **display name** that identifies the site. If the live table still uses the legacy projector names, use `bo_siteid` and confirm with one lookup before the client is watching |
 | `FASTFIELD_SITE_INFO_FIELD_MAP` | Not required | Required. JSON below |
 | `FASTFIELD_SITE_INFO_TABLE_NAME` | Not required | Optional. Default is `site info`. Set it only if `GET /datatables/list` spells the table differently |
-| `FASTFIELD_SUBSCRIPTION_KEY` | Not required | Required. Sent as `Ocp-Apim-Subscription-Key` |
-| `FASTFIELD_USER_TOKEN` | Not required | Required. Sent as `Authorization: Bearer` |
-| `FASTFIELD_GATEKEEPER_SESSION_TOKEN` | Not required | Optional. Unset omits `X-Gatekeeper-SessionToken`. `bearer` resends `FASTFIELD_USER_TOKEN` in that header. Any other value is sent as the header |
 | `FASTFIELD_DATATABLES_BASE_URL` | Not required | Optional. Default `https://api.fastfieldforms.com/services/v3` |
 | `FASTFIELD_HP_FORM_ID` | Optional | Optional |
 | `FASTFIELD_HP_FORM_NAME` | Optional extra accepted name | Optional |
@@ -348,32 +364,34 @@ row is sent back. A blank submission field does not clear a column. On
 insert, FastField requires every required column, so a site that has no
 row yet needs those columns in the map.
 
-### Are the legacy keys the DataTables keys?
+### DataTables auth for the site table write
 
-No. The code does not reuse them, and it should not.
+The gateway ignores `Ocp-Apim-Subscription-Key`. Do not create
+`FASTFIELD_SUBSCRIPTION_KEY`, `FASTFIELD_USER_TOKEN`, or
+`FASTFIELD_GATEKEEPER_SESSION_TOKEN` for this test.
 
-| Legacy projector | DataTables v3 upsert |
+The auth-fix PR, which is separate from this branch, logs in with:
+
+| Name | Role |
 | --- | --- |
-| `FASTFIELD_API_KEY` as `x-api-key` (or `FASTFIELD_API_KEY_HEADER`) | `FASTFIELD_SUBSCRIPTION_KEY` as `Ocp-Apim-Subscription-Key` |
-| `FASTFIELD_SESSION_TOKEN` as `x-session-token` (or `FASTFIELD_SESSION_TOKEN_HEADER`) | `FASTFIELD_USER_TOKEN` as `Authorization: Bearer` |
-| No gatekeeper header | Optional `FASTFIELD_GATEKEEPER_SESSION_TOKEN` as `X-Gatekeeper-SessionToken` |
+| `FASTFIELD_API_KEY` | `FastField-API-Key`. Already in Vercel |
+| `FASTFIELD_USERNAME` | Email for `POST /services/v3/authenticate`, HTTP Basic user. Not in Vercel yet |
+| `FASTFIELD_PASSWORD` | HTTP Basic password for that login. Not in Vercel yet |
+| `FASTFIELD_SESSION_TOKEN` | Maybe. Already in Vercel. Use it if the auth-fix accepts a stored session token instead of logging in every time |
 
-`docs/fastfield-site-info-sync.md` already says the subscription key and
-user token are the values that authorize GET submissions, and that they
-are not `FASTFIELD_API_KEY` or `FASTFIELD_SESSION_TOKEN`. Copying one into
-the other without a check would send the wrong header. There is no
-fallback, because a silent fallback can turn a 401 into a write with the
-wrong credential.
+The returned `sessionToken` is sent as `X-Gatekeeper-SessionToken`.
 
-Before the client test, you can compare them yourself with two curls that
-do not print the secret: one DataTables `GET /datatables/list` using
-`FASTFIELD_SUBSCRIPTION_KEY` and `FASTFIELD_USER_TOKEN`, and the existing
-legacy sync only if you already know that path works. If the DataTables
-call returns 401, retry once with `FASTFIELD_GATEKEEPER_SESSION_TOKEN=bearer`.
-Only if you have already proven that the API key value is the APIM
-subscription key should you paste that same value into
-`FASTFIELD_SUBSCRIPTION_KEY`. Do not point the v3 client at
-`FASTFIELD_API_KEY` in code.
+This High Pressure branch only calls `syncSiteInfoFromSubmission`. It does
+not edit `datatables/client.ts`. Until the auth-fix PR is merged into the
+deployment you test, `site_info_sync` cannot update the FastField visit ID
+column. The BoilerOps visit, asset, and report do not need that PR.
+
+Admin → Sites still uses the legacy projector (`x-api-key` and
+`x-session-token` from `FASTFIELD_API_KEY` and `FASTFIELD_SESSION_TOKEN`).
+That button still does not write the visit ID. Leave it alone during the
+test. `docs/fastfield-site-info-sync.md` still describes the old
+subscription-key client. Follow this checklist for the afternoon test, not
+that section.
 
 ### Migration to approve and apply
 
@@ -397,10 +415,14 @@ No earlier migration needs to be re-applied.
 ### Deploy
 
 1. Open the Vercel deployment for this branch. Do not wait on a merge if
-   the preview can reach the same Supabase project you migrated.
-2. Confirm the preview has `FASTFIELD_WEBHOOK_SECRET` and the Supabase
-   service role. Preview env is separate from Production unless the
-   variables are shared.
+   the preview can reach the same Supabase project you migrated. The
+   FastField visit ID column still needs the DataTables auth-fix PR merged
+   into that same deployment. The BoilerOps visit does not.
+2. Confirm the preview has `FASTFIELD_WEBHOOK_SECRET`, the Supabase
+   service role, and, once the auth-fix is included, `FASTFIELD_API_KEY`,
+   `FASTFIELD_USERNAME`, `FASTFIELD_PASSWORD`, and `FASTFIELD_SESSION_TOKEN`
+   if that PR uses the stored token. Preview env is separate from
+   Production unless the variables are shared.
 3. Point the FastField High Pressure delivery at
    `https://PREVIEW-OR-PRODUCTION/api/fastfield/submissions` with the secret
    header.
@@ -419,7 +441,8 @@ No earlier migration needs to be re-applied.
 | Site was never created in BoilerOps | HTTP 500, unknown site id | Create the site in Admin → Sites first. Use its public id as `bo_siteid` |
 | QR scan does not fill fields | Empty `bo_siteid` | Type the public id, or use curl. Do not reprint QR codes today |
 | Two devices submit a blank visit ID before the column is written | Two visits | Type one shared `site_visit_id` on every device for this test |
-| Site-info env vars still unset | Visit exists, `site_info_sync` is `skipped` | The BoilerOps half of the test still passes. Paste the visit ID into the FastField column by hand if the next form must look it up |
+| Auth-fix PR is not merged yet | Visit exists. Site table visit ID column does not update. `site_info_sync` is `skipped` or `failed` | Expected until that PR is deployed. Paste the visit ID into the FastField column by hand if the next form must look it up |
+| Site-info flag, key column, or field map still unset | Visit exists, `site_info_sync` is `skipped` | The BoilerOps half of the test still passes. Set those only on the deployment that includes the auth fix |
 | Wrong column display name | Sync `failed`, often HTTP 400 or 422 | Leave the flag off, fix the JSON keys, Reprocess one submission |
 | Legacy Sync button during the test | Site row changes without the visit ID | Do not press it until the test is over |
 | Same submission retried after success | `duplicate: true` | Expected. Use a new `submissionId` for the next device |
@@ -486,6 +509,5 @@ or the site-info call.
   far"?
 - Should the QR later encode the site public id or a JSON object, instead
   of only the URL? Not changed today.
-- Are `FASTFIELD_API_KEY` and `FASTFIELD_SUBSCRIPTION_KEY` the same value
-  in the FastField account? The code treats them as different until you
-  confirm with a DataTables call.
+- Does the auth-fix PR read a stored `FASTFIELD_SESSION_TOKEN`, or does
+  it always log in with `FASTFIELD_USERNAME` and `FASTFIELD_PASSWORD`?
