@@ -47,23 +47,48 @@ Fill these in either place. Env overrides the module.
 | Setting | Module constant | Env var |
 | --- | --- | --- |
 | Enable (default off) | — | `FASTFIELD_SITE_INFO_SYNC_ENABLED=true` |
-| Table name | `SITE_INFO_TABLE_NAME` (`site info`) | `FASTFIELD_SITE_INFO_TABLE_NAME` |
-| Site key column | `SITE_INFO_KEY_COLUMN` (empty) | `FASTFIELD_SITE_INFO_KEY_COLUMN` |
+| Table name | `SITE_INFO_TABLE_NAME` (`Site Info`) | `FASTFIELD_SITE_INFO_TABLE_NAME` |
+| Site key column | `SITE_INFO_KEY_COLUMN` (`site_code`) | `FASTFIELD_SITE_INFO_KEY_COLUMN` |
 | Field map | `SITE_INFO_FIELD_MAP` (empty) | `FASTFIELD_SITE_INFO_FIELD_MAP` |
 
 Module file: `apps/boilerops/src/lib/fastfield/site-info-sync-config.ts`.
 
-1. **Table name.** Confirm the exact `name` from `GET /datatables/list`,
-   including capitalization and spaces. The code default is `site info`.
-   Matching is case-sensitive.
-2. **Key column.** The exact site info **column display name** that
-   identifies one site. Not `fields[].key`. Leave it blank until you know it.
+1. **Table name.** The live table `name` is `Site Info`. The code default
+   is that string. Matching trims and ignores case, so `site info` still
+   selects it. The row id is `listId` (this account:
+   `bae377fe-a4e9-4b70-b424-83b5d0e5a592`). `dataTableId` and `id` are
+   fallbacks when `listId` is absent. There is no `id` on the live list
+   entry.
+2. **Key column.** The lookup key display name is `site_code`
+   (`isLookupKey: true`). The default is `site_code`. Row `data` is keyed
+   by `config.fields[].key` (a 32-hex GUID), not by the display name. The
+   client translates display names to those keys before lookup, PUT, and
+   POST. A configured display name that is not in `config.fields` fails
+   the sync and writes nothing.
 3. **Field map.** JSON object whose keys are site info column display names
    and whose values are top-level submission field keys:
 
    ```json
-   {"Column display name":"submission_field_key"}
+   {
+     "site_code": "site_code",
+     "bo_siteid": "bo_siteid",
+     "va_loc": "facility_name",
+     "va_contact": "contact_name",
+     "va_contact_email": "contact_email",
+     "va_contact_phone": "contact_phone"
+   }
    ```
+
+   Live display names also include `site_id`, `job_num`, and `bo_qrcode`.
+   This ingest has no submission fields for those, so they stay off the map.
+   There is no `Site Visit ID` column yet. Add that column in FastField
+   before putting it in the map (`"Site Visit ID": "site_visit_id"`).
+   Including it early fails the sync because the display name is missing.
+
+   High Pressure resolves the BoilerOps site from `bo_siteid` first and
+   uses `site_code` only when the public id is absent. `payloadForSiteInfoSync`
+   copies `site_code` only when the submission already has one, so a form
+   that sends only `bo_siteid` will not satisfy a `site_code` lookup.
 
    On insert, every required column must be present. Lookup-key columns are
    required by FastField. Omitted non-required columns are stored as null.
@@ -90,9 +115,15 @@ Module file: `apps/boilerops/src/lib/fastfield/site-info-sync-config.ts`.
       cached until a DataTables call returns HTTP 401.
    2. Otherwise, if `FASTFIELD_SESSION_TOKEN` is set, send it and do not call
       `/authenticate` yet. It has no known expiry.
-   3. Otherwise `POST /authenticate` with `FastField-API-Key` and
-      `Authorization: Basic` of `FASTFIELD_USERNAME:FASTFIELD_PASSWORD`.
-      The response field used is `sessionToken`. The body is not logged.
+   3. Otherwise `POST /authenticate` with `FastField-API-Key`,
+      `Authorization: Basic` of `FASTFIELD_USERNAME:FASTFIELD_PASSWORD`,
+      `Content-Type: application/json`, and a JSON body `{}`. A request
+      with no body returns HTTP 411. The response fields used are
+      `sessionToken` and `sessionExpiration`. A live session lasts 24
+      hours. The client logs only the shape of `sessionExpiration`
+      (`iso-8601`, epoch, or `absent`), never the timestamp. When the
+      field is absent or unparsed, the cache lasts 24 hours. The response
+      body is not logged.
 
    On HTTP 401 from a DataTables call the rejected token is dropped. If
    username and password are set, the client calls `/authenticate` once and
@@ -129,11 +160,14 @@ Module file: `apps/boilerops/src/lib/fastfield/site-info-sync-config.ts`.
 ## Behavior
 
 1. Resolve a session as described above, then `GET /datatables/list` and
-   cache `dataTableId` (or `id` if that is all the list body provides) for
-   the configured name. A 401 on any DataTables call refreshes the session
-   once when username and password are set, then retries that call once.
-2. `POST /datatables/{tableId}/items/lookup` with
-   `{ "data": { "<key column>": <value> } }`.
+   cache `listId` (falling back to `dataTableId`, then `id`) for the
+   configured name. Matching trims and ignores case. `config.fields` from
+   that list entry supplies the GUID for each display name. A 401 on any
+   DataTables call refreshes the session once when username and password
+   are set, then retries that call once.
+2. `POST /datatables/{listId}/items/lookup` with
+   `{ "data": { "<field GUID>": <value> } }`. The GUID is
+   `config.fields[].key` for the key column's display name.
 3. A single row with an id and a column object is a hit. The submission
    values are merged onto that full object and sent as
    `PUT /datatables/{tableId}/items` with `{ "id", "data" }`. A partial `data`
@@ -183,7 +217,9 @@ secrets into the repo, into logs, or into this doc. The automated tests mock
      "https://api.fastfieldforms.com/services/v3/authenticate" \
      -H "FastField-API-Key: YOUR_API_KEY" \
      -H "Authorization: Basic $(printf '%s' 'user@example.com:YOUR_PASSWORD' | base64)" \
-     -H "Accept: application/json"
+     -H "Accept: application/json" \
+     -H "Content-Type: application/json" \
+     -d '{}'
 
    curl -sS "https://api.fastfieldforms.com/services/v3/datatables/list" \
      -H "FastField-API-Key: YOUR_API_KEY" \

@@ -11,6 +11,12 @@ import {
 const API_KEY = "APIKEY_SHOULD_NOT_BE_LOGGED";
 const SESSION_TOKEN = "SESSION_SHOULD_NOT_BE_LOGGED";
 const SITE_CODE = "CAP-SHOULD_NOT_BE_LOGGED";
+const TABLE_ID = "bae377fe-a4e9-4b70-b424-83b5d0e5a592";
+const FIELD_SITE_CODE = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const FIELD_PHONE = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+const FIELD_NOTES = "cccccccccccccccccccccccccccccccc";
+const FIELD_EMPTY = "dddddddddddddddddddddddddddddddd";
+const FIELD_EXTRA = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
 type Env = Record<string, string | undefined>;
 type Call = {
@@ -45,9 +51,9 @@ function readyEnv(extra: Env = {}): Env {
   return {
     FASTFIELD_SITE_INFO_SYNC_ENABLED: "true",
     FASTFIELD_SITE_INFO_TABLE_NAME: "site info",
-    FASTFIELD_SITE_INFO_KEY_COLUMN: "Site Code",
+    FASTFIELD_SITE_INFO_KEY_COLUMN: "site_code",
     FASTFIELD_SITE_INFO_FIELD_MAP: JSON.stringify({
-      "Site Code": "site_code",
+      site_code: "site_code",
       Phone: "phone",
     }),
     FASTFIELD_API_KEY: API_KEY,
@@ -69,8 +75,25 @@ function submission(extra: Record<string, unknown> = {}) {
 function listBody() {
   return {
     dataTables: [
-      { name: "other", id: "not-the-table" },
-      { name: "site info", id: "wrong-id", dataTableId: "table-9" },
+      {
+        name: "other",
+        listId: "11111111-1111-4111-8111-111111111111",
+        config: { fields: [] },
+      },
+      {
+        name: "Site Info",
+        id: "wrong-id",
+        listId: TABLE_ID,
+        config: {
+          fields: [
+            { key: FIELD_SITE_CODE, displayName: "site_code", isLookupKey: true },
+            { key: FIELD_PHONE, displayName: "Phone", isLookupKey: false },
+            { key: FIELD_NOTES, displayName: "Notes", isLookupKey: false },
+            { key: FIELD_EMPTY, displayName: "Empty", isLookupKey: false },
+            { key: FIELD_EXTRA, displayName: "Extra", isLookupKey: false },
+          ],
+        },
+      },
     ],
   };
 }
@@ -181,7 +204,7 @@ describe("site info DataTables sync", { concurrency: false }, () => {
           body: {
             item: {
               id: "row-1",
-              data: { "Site Code": "OLD", Notes: "keep me" },
+              data: { [FIELD_SITE_CODE]: "OLD", [FIELD_NOTES]: "keep me" },
             },
           },
         };
@@ -194,7 +217,7 @@ describe("site info DataTables sync", { concurrency: false }, () => {
     const second = await syncSiteInfoFromSubmission(submission(), { client, env });
 
     assert.equal(first.status, "updated");
-    assert.equal(first.tableId, "table-9");
+    assert.equal(first.tableId, TABLE_ID);
     assert.equal(second.status, "updated");
     assert.equal(calls.filter((call) => call.url.endsWith("/datatables/list")).length, 1);
     assert.equal(lookups, 2);
@@ -202,7 +225,7 @@ describe("site info DataTables sync", { concurrency: false }, () => {
     assert.equal(calls[0].headers.get("x-gatekeeper-sessiontoken"), SESSION_TOKEN);
     assert.equal(calls[0].headers.get("authorization"), null);
     assert.equal(calls[0].headers.get("ocp-apim-subscription-key"), null);
-    assert.match(calls[1].url, /\/datatables\/table-9\/items\/lookup$/);
+    assert.match(calls[1].url, new RegExp(`/datatables/${TABLE_ID}/items/lookup$`));
     assertNoSecrets(loggedText());
     assert.match(loggedText(), /first list success response shape/);
     assert.match(loggedText(), /<string len=/);
@@ -215,17 +238,17 @@ describe("site info DataTables sync", { concurrency: false }, () => {
         return { status: 200, body: listBody() };
       }
       if (call.url.endsWith("/items/lookup")) {
-        assert.deepEqual(call.body, { data: { "Site Code": SITE_CODE } });
+        assert.deepEqual(call.body, { data: { [FIELD_SITE_CODE]: SITE_CODE } });
         return {
           status: 200,
           body: {
             item: {
               id: "row-1",
               data: {
-                "Site Code": "OLD",
-                Notes: "keep me",
-                Phone: "111",
-                Empty: null,
+                [FIELD_SITE_CODE]: "OLD",
+                [FIELD_NOTES]: "keep me",
+                [FIELD_PHONE]: "111",
+                [FIELD_EMPTY]: null,
               },
             },
           },
@@ -243,13 +266,13 @@ describe("site info DataTables sync", { concurrency: false }, () => {
     assert.equal(result.itemId, "row-1");
     assert.equal(calls.some((call) => call.method === "POST" && call.url.endsWith("/items")), false);
     assert.ok(put);
-    assert.match(put.url, /\/datatables\/table-9\/items$/);
+    assert.match(put.url, new RegExp(`/datatables/${TABLE_ID}/items$`));
     assert.equal(putBody.id, "row-1");
     assert.deepEqual(putBody.data, {
-      "Site Code": SITE_CODE,
-      Notes: "keep me",
-      Phone: "222",
-      Empty: null,
+      [FIELD_SITE_CODE]: SITE_CODE,
+      [FIELD_NOTES]: "keep me",
+      [FIELD_PHONE]: "222",
+      [FIELD_EMPTY]: null,
     });
     assertNoSecrets(loggedText());
   });
@@ -278,9 +301,33 @@ describe("site info DataTables sync", { concurrency: false }, () => {
     assert.equal(calls.some((call) => call.method === "PUT"), false);
     assert.equal(calls.some((call) => call.url.includes("/items?")), false);
     assert.deepEqual(post?.body, {
-      data: { "Site Code": SITE_CODE, Phone: "222" },
+      data: { [FIELD_SITE_CODE]: SITE_CODE, [FIELD_PHONE]: "222" },
     });
     assertNoSecrets(loggedText());
+  });
+
+  test("does not write when a configured display name is missing from config.fields", async () => {
+    const env = readyEnv({
+      FASTFIELD_SITE_INFO_FIELD_MAP: JSON.stringify({
+        site_code: "site_code",
+        "Not A Column": "phone",
+      }),
+    });
+    let writes = 0;
+    const { client } = clientFor(env, (call) => {
+      if (call.url.endsWith("/datatables/list")) {
+        return { status: 200, body: listBody() };
+      }
+      writes += 1;
+      return { status: 200, body: {} };
+    });
+
+    const result = await syncSiteInfoFromSubmission(submission(), { client, env });
+    assert.equal(result.status, "failed");
+    assert.match(result.reason, /Not A Column/);
+    assert.match(result.reason, /No row was written/);
+    assert.equal(writes, 0);
+    assert.match(loggedText(), /Not A Column/);
   });
 
   test("pages through items when lookup is unusable, then PUTs the full row", async () => {
@@ -297,28 +344,39 @@ describe("site info DataTables sync", { concurrency: false }, () => {
         return {
           status: 200,
           body: {
+            pageNumber: 1,
+            pageSize: SITE_INFO_PAGE_SIZE,
             items: Array.from({ length: SITE_INFO_PAGE_SIZE }, (_, index) => ({
               id: `p1-${index}`,
-              data: { "Site Code": `other-${index}`, Notes: "x", Extra: index },
+              data: {
+                [FIELD_SITE_CODE]: `other-${index}`,
+                [FIELD_NOTES]: "x",
+                [FIELD_EXTRA]: index,
+              },
             })),
           },
         };
       }
       if (call.method === "GET" && page === "0") {
-        return { status: 200, body: { items: [] } };
+        return {
+          status: 200,
+          body: { pageNumber: 0, pageSize: SITE_INFO_PAGE_SIZE, items: [] },
+        };
       }
       if (call.method === "GET" && page === "2") {
         return {
           status: 200,
           body: {
+            pageNumber: 2,
+            pageSize: SITE_INFO_PAGE_SIZE,
             items: [
               {
                 id: "target",
                 data: {
-                  "Site Code": SITE_CODE,
-                  Notes: "keep me",
-                  Extra: 1,
-                  Phone: "111",
+                  [FIELD_SITE_CODE]: SITE_CODE,
+                  [FIELD_NOTES]: "keep me",
+                  [FIELD_EXTRA]: 1,
+                  [FIELD_PHONE]: "111",
                 },
               },
             ],
@@ -343,10 +401,10 @@ describe("site info DataTables sync", { concurrency: false }, () => {
       false,
     );
     assert.deepEqual((put?.body as { data: Record<string, unknown> }).data, {
-      "Site Code": SITE_CODE,
-      Notes: "keep me",
-      Extra: 1,
-      Phone: "222",
+      [FIELD_SITE_CODE]: SITE_CODE,
+      [FIELD_NOTES]: "keep me",
+      [FIELD_EXTRA]: 1,
+      [FIELD_PHONE]: "222",
     });
     assertNoSecrets(loggedText());
   });
@@ -375,7 +433,6 @@ describe("site info DataTables sync", { concurrency: false }, () => {
       }),
     });
     assert.equal(unconfigured.status, "skipped");
-    assert.match(unconfigured.reason, /key column is empty/);
     assert.match(unconfigured.reason, /field map is empty/);
     assert.match(unconfigured.reason, /site-info-sync-config\.ts/);
     assert.match(loggedText(), /no-op:/);
@@ -421,7 +478,10 @@ describe("site info DataTables sync", { concurrency: false }, () => {
       if (call.url.endsWith("/items/lookup")) {
         return {
           status: 200,
-          body: { id: "row-1", data: { "Site Code": "OLD", Notes: "keep me" } },
+          body: {
+            id: "row-1",
+            data: { [FIELD_SITE_CODE]: "OLD", [FIELD_NOTES]: "keep me" },
+          },
         };
       }
       if (call.method === "PUT") {
@@ -506,8 +566,8 @@ describe("site info DataTables sync", { concurrency: false }, () => {
         return {
           status: 200,
           body: [
-            { id: "a", data: { "Site Code": SITE_CODE, Notes: "one" } },
-            { id: "b", data: { "Site Code": SITE_CODE, Notes: "two" } },
+            { id: "a", data: { [FIELD_SITE_CODE]: SITE_CODE, [FIELD_NOTES]: "one" } },
+            { id: "b", data: { [FIELD_SITE_CODE]: SITE_CODE, [FIELD_NOTES]: "two" } },
           ],
         };
       }
@@ -551,7 +611,11 @@ describe("site info DataTables sync", { concurrency: false }, () => {
           status: 200,
           body: {
             id: "row-1",
-            data: { "Site Code": SITE_CODE, Notes: "keep me", Phone: "old" },
+            data: {
+              [FIELD_SITE_CODE]: SITE_CODE,
+              [FIELD_NOTES]: "keep me",
+              [FIELD_PHONE]: "old",
+            },
           },
         };
       }
@@ -584,11 +648,11 @@ describe("site info DataTables sync", { concurrency: false }, () => {
     );
     const put = calls.find((call) => call.method === "PUT");
     assert.equal(
-      (put?.body as { data: Record<string, unknown> }).data.Phone,
+      (put?.body as { data: Record<string, unknown> }).data[FIELD_PHONE],
       "222",
     );
     assert.equal(
-      (put?.body as { data: Record<string, unknown> }).data.Notes,
+      (put?.body as { data: Record<string, unknown> }).data[FIELD_NOTES],
       "keep me",
     );
     assertNoSecrets(loggedText());

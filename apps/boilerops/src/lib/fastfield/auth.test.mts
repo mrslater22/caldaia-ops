@@ -78,7 +78,8 @@ describe("FastField DataTables auth", () => {
       if (call.url.endsWith("/authenticate")) {
         minted += 1;
         assert.equal(call.method, "POST");
-        assert.equal(call.body, null);
+        assert.deepEqual(call.body, {});
+        assert.equal(call.headers.get("content-type"), "application/json");
         assert.equal(call.headers.get("fastfield-api-key"), API_KEY);
         assert.equal(call.headers.get("authorization"), basic(USERNAME, PASSWORD));
         assert.equal(call.headers.get("x-gatekeeper-sessiontoken"), null);
@@ -115,6 +116,63 @@ describe("FastField DataTables auth", () => {
     assert.equal(minted, 2);
     const refreshed = calls.filter((call) => call.url.includes("/datatables/"));
     assertDataHeaders(refreshed[2].headers, "minted-2");
+  });
+
+  test("authenticate sends {} and logs only the sessionExpiration shape", async () => {
+    const expiration = "2099-06-01T12:00:00.000Z";
+    const logs: string[] = [];
+    const infoMock = mock.method(console, "info", (...args: unknown[]) => {
+      logs.push(args.map(String).join(" "));
+    });
+    try {
+      const { calls, fetchImpl } = installFetch((call) => {
+        if (call.url.endsWith("/authenticate")) {
+          assert.deepEqual(call.body, {});
+          assert.equal(call.headers.get("content-type"), "application/json");
+          return {
+            status: 200,
+            body: { sessionToken: "minted-1", sessionExpiration: expiration },
+          };
+        }
+        return {
+          status: 200,
+          body: { pageNumber: 1, pageSize: 10, items: [] },
+        };
+      });
+      const client = createDataTableClient({ env: loginEnv(), fetchImpl });
+      const listed = await client.listItems("table-1", 10, 1);
+      assert.equal(listed.status, 200);
+      const text = logs.join("\n");
+      assert.match(text, /sessionExpiration shape=iso-8601/);
+      assert.equal(text.includes(expiration), false);
+      assert.equal(calls[0].url.endsWith("/authenticate"), true);
+    } finally {
+      infoMock.mock.restore();
+    }
+  });
+
+  test("a session without sessionExpiration is reused for 24 hours", async () => {
+    const start = Date.parse("2026-01-01T00:00:00.000Z");
+    let clock = start;
+    let minted = 0;
+    const { fetchImpl } = installFetch((call) => {
+      if (call.url.endsWith("/authenticate")) {
+        minted += 1;
+        return { status: 200, body: { sessionToken: `s-${minted}` } };
+      }
+      return { status: 200, body: { pageNumber: 1, pageSize: 1, items: [] } };
+    });
+    const client = createDataTableClient({
+      env: loginEnv(),
+      fetchImpl,
+      now: () => clock,
+    });
+    await client.listItems("table-1", 1, 1);
+    await client.listItems("table-1", 1, 1);
+    assert.equal(minted, 1);
+    clock = start + 24 * 60 * 60 * 1000 + 61_000;
+    await client.listItems("table-1", 1, 1);
+    assert.equal(minted, 2);
   });
 
   test("sessionExpires in the past is replaced on the next call", async () => {

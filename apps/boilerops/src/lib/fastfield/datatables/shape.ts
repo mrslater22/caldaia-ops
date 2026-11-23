@@ -9,9 +9,17 @@
  * down without writing secrets or row values to the logs.
  */
 
+export type TableField = {
+  /** 32-hex field key. Row `data` is keyed by this, not by displayName. */
+  key: string;
+  displayName: string;
+  isLookupKey: boolean;
+};
+
 export type ParsedTable = {
   id: string;
   name: string;
+  fields: TableField[];
 };
 
 export type ParsedItem = {
@@ -135,6 +143,12 @@ export function parseTables(body: unknown): ParsedTable[] {
       "display_name",
     ]);
     if (!name) continue;
+    const fields = parseTableFields(record);
+    const listId = firstString(record, ["listId", "list_id"]);
+    if (listId) {
+      strong.push({ id: listId, name, fields });
+      continue;
+    }
     const strongId = firstString(record, [
       "dataTableId",
       "data_table_id",
@@ -142,11 +156,11 @@ export function parseTables(body: unknown): ParsedTable[] {
       "table_id",
     ]);
     if (strongId) {
-      strong.push({ id: strongId, name });
+      strong.push({ id: strongId, name, fields });
       continue;
     }
     const id = firstString(record, ["id"]);
-    if (id) weak.push({ id, name });
+    if (id) weak.push({ id, name, fields });
   }
   return dedupeTables(strong.length > 0 ? strong : weak);
 }
@@ -218,6 +232,26 @@ function tryParseItem(value: unknown): ParsedItem | null {
   }
   if (columns === 0) return { id, data: {}, complete: false };
   return { id, data, complete: true };
+}
+
+function parseTableFields(record: Record<string, unknown>): TableField[] {
+  const config = asRecord(record.config);
+  const raw = config?.fields ?? record.fields;
+  if (!Array.isArray(raw)) return [];
+  const fields: TableField[] = [];
+  for (const entry of raw) {
+    const field = asRecord(entry);
+    if (!field) continue;
+    const key = firstString(field, ["key"]);
+    const displayName = firstString(field, ["displayName", "display_name"]);
+    if (!key || !displayName) continue;
+    fields.push({
+      key,
+      displayName,
+      isLookupKey: field.isLookupKey === true || field.is_lookup_key === true,
+    });
+  }
+  return fields;
 }
 
 function fieldsArrayToRecord(value: unknown): Record<string, unknown> | null {

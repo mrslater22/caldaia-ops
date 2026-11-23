@@ -8,37 +8,33 @@
  * 1. The site-info column display name that identifies one site (the key).
  * 2. The map of site-info column display names → submission field keys.
  *
- * Item `data` keys are column display names, not `fields[].key`.
- * Env values override this module. See docs/fastfield-site-info-sync.md.
+ * The list entry's `config.fields[].key` is the GUID used in row `data`.
+ * Display names in this config are translated to those keys before lookup,
+ * PUT, and POST. Env values override this module.
+ * See docs/fastfield-site-info-sync.md.
  */
 
 /**
- * Exact Data Table name to select from `GET /datatables/list`.
- * Override with `FASTFIELD_SITE_INFO_TABLE_NAME` if the account spells it
- * differently. Matching is case-sensitive.
+ * Data Table `name` from `GET /datatables/list`. The live table is "Site Info".
+ * Matching trims and ignores case. Override with `FASTFIELD_SITE_INFO_TABLE_NAME`.
  */
-export const SITE_INFO_TABLE_NAME = "site info";
+export const SITE_INFO_TABLE_NAME = "Site Info";
 
 /**
- * PLACEHOLDER. Exact site-info column display name used to find the row.
- * Leave this empty until the column is confirmed.
+ * Live lookup-key display name (`config.fields` `isLookupKey`).
  * Override with `FASTFIELD_SITE_INFO_KEY_COLUMN`.
  */
-export const SITE_INFO_KEY_COLUMN = "";
+export const SITE_INFO_KEY_COLUMN = "site_code";
 
 /**
  * PLACEHOLDER. Site-info column display name → submission payload field key.
  * Leave this empty until the columns are confirmed.
  * Override with `FASTFIELD_SITE_INFO_FIELD_MAP` (JSON object).
  *
- * Example shape only — do not uncomment until the names are real.
- * High Pressure needs the visit ID column in this map once the display
- * name is confirmed. The submission key is `site_visit_id` unless
- * FASTFIELD_HP_FIELD_MAP overrides it. See docs/hp-device-e2e-test.md.
- * {
- *   "REPLACE_WITH_SITE_INFO_COLUMN": "bo_siteid",
- *   "Site Visit ID": "site_visit_id"
- * }
+ * Suggested map, not applied until set in env or copied here:
+ * site_code, bo_siteid, va_loc, va_contact, va_contact_email,
+ * va_contact_phone. The live table has no visit ID column yet. Add that
+ * column before mapping it. See docs/fastfield-site-info-sync.md.
  */
 export const SITE_INFO_FIELD_MAP: Readonly<Record<string, string>> = {};
 

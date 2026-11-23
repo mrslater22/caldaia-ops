@@ -27,6 +27,9 @@ export const FASTFIELD_REQUEST_TIMEOUT_MS = 15_000;
 /** Refresh this long before a parsed session expiry. */
 const SESSION_EXPIRY_SKEW_MS = 60_000;
 
+/** Live sessions last 24 hours when the response omits a usable expiry. */
+const SESSION_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
 const SESSION_EXPIRY_KEYS = [
   "sessionExpiration",
   "sessionExpires",
@@ -165,13 +168,15 @@ export function createFastFieldAuth(options: {
 
     let response: Response;
     try {
-      response = await fetchImpl(serviceUrl(env, "/authenticate"), {
+        response = await fetchImpl(serviceUrl(env, "/authenticate"), {
         method: "POST",
         headers: {
           Accept: "application/json",
+          "Content-Type": "application/json",
           [FASTFIELD_API_KEY_HEADER]: apiKey,
           Authorization: basicAuthorization(username, password),
         },
+        body: "{}",
         signal: AbortSignal.timeout(FASTFIELD_REQUEST_TIMEOUT_MS),
       });
     } catch (error) {
@@ -201,7 +206,8 @@ export function createFastFieldAuth(options: {
       );
     }
 
-    cached = { token, expiresAt: expiryFrom(body) };
+    logExpiryShape(body);
+    cached = { token, expiresAt: expiryFrom(body, now) };
     return token;
   }
 
@@ -304,14 +310,46 @@ function sessionTokenFrom(body: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function expiryFrom(body: unknown): number | null {
-  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
-  const record = body as Record<string, unknown>;
-  for (const key of SESSION_EXPIRY_KEYS) {
-    const parsed = parseExpiry(record[key]);
-    if (parsed != null) return parsed;
+function expiryFrom(body: unknown, now: () => number): number {
+  if (body && typeof body === "object" && !Array.isArray(body)) {
+    const record = body as Record<string, unknown>;
+    for (const key of SESSION_EXPIRY_KEYS) {
+      const parsed = parseExpiry(record[key]);
+      if (parsed != null) return parsed;
+    }
   }
-  return null;
+  return now() + SESSION_LIFETIME_MS;
+}
+
+/**
+ * Shape only. The timestamp string and any numeric instant stay out of the log.
+ */
+function logExpiryShape(body: unknown): void {
+  const value =
+    body && typeof body === "object" && !Array.isArray(body)
+      ? (body as Record<string, unknown>).sessionExpiration
+      : undefined;
+  console.info(
+    `[fastfield auth] sessionExpiration shape=${expiryShape(value)}`,
+  );
+}
+
+function expiryShape(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value < 1_000_000_000_000 ? "epoch-seconds" : "epoch-milliseconds";
+  }
+  if (typeof value !== "string") {
+    return value == null ? "absent" : typeof value;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) return "empty-string";
+  if (/^[0-9]+$/.test(trimmed)) {
+    return trimmed.length >= 13
+      ? "epoch-milliseconds-string"
+      : "epoch-seconds-string";
+  }
+  if (!Number.isNaN(Date.parse(trimmed))) return "iso-8601";
+  return `unparsed-string len=${trimmed.length}`;
 }
 
 function parseExpiry(value: unknown): number | null {

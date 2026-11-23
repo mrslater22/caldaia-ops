@@ -13,6 +13,7 @@ import {
   parseTables,
   type LookupOutcome,
   type ParsedItem,
+  type TableField,
 } from "./shape.ts";
 
 export {
@@ -29,9 +30,10 @@ export type DataTableResponse<T> = {
 };
 
 export type DataTableClient = {
-  resolveTableId(
-    tableName: string,
-  ): Promise<{ ok: true; tableId: string } | { ok: false; reason: string }>;
+  resolveTableId(tableName: string): Promise<
+    | { ok: true; tableId: string; fields: TableField[] }
+    | { ok: false; reason: string }
+  >;
   lookupItem(
     tableId: string,
     keyColumn: string,
@@ -69,7 +71,7 @@ export function createDataTableClient(options?: {
     fetchImpl,
     now: options?.now,
   });
-  const tableIds = new Map<string, string>();
+  const tableIds = new Map<string, { tableId: string; fields: TableField[] }>();
 
   async function request(
     operation: string,
@@ -122,8 +124,9 @@ export function createDataTableClient(options?: {
 
   return {
     async resolveTableId(tableName) {
-      const cached = tableIds.get(tableName);
-      if (cached) return { ok: true, tableId: cached };
+      const cacheKey = tableName.trim().toLowerCase();
+      const cached = tableIds.get(cacheKey);
+      if (cached) return { ok: true, ...cached };
 
       const listed = await request("list", "/datatables/list", { method: "GET" });
       if (listed.status < 200 || listed.status >= 300) {
@@ -134,15 +137,19 @@ export function createDataTableClient(options?: {
       }
 
       const tables = parseTables(listed.body);
-      const matches = tables.filter((table) => table.name === tableName);
+      const wanted = tableName.trim().toLowerCase();
+      const matches = tables.filter(
+        (table) => table.name.trim().toLowerCase() === wanted,
+      );
       if (matches.length === 1) {
-        tableIds.set(tableName, matches[0].id);
-        return { ok: true, tableId: matches[0].id };
+        const resolved = { tableId: matches[0].id, fields: matches[0].fields };
+        tableIds.set(cacheKey, resolved);
+        return { ok: true, ...resolved };
       }
       if (matches.length > 1) {
         return {
           ok: false,
-          reason: `GET /datatables/list returned ${matches.length} tables named ${JSON.stringify(tableName)}. No row was written.`,
+          reason: `GET /datatables/list returned ${matches.length} tables named ${JSON.stringify(tableName)} after trimming and ignoring case. No row was written.`,
         };
       }
       const names = [...new Set(tables.map((table) => table.name))].slice(0, 30);
