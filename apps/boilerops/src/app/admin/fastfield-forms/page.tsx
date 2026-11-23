@@ -162,6 +162,7 @@ export default function FastFieldFormsAdminPage() {
             >
               <option value="site_onboarding">site_onboarding</option>
               <option value="boiler_onboarding">boiler_onboarding</option>
+              <option value="high_pressure">high_pressure</option>
             </select>
           </label>
           <label className="space-y-1.5 text-sm">

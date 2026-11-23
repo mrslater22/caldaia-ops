@@ -15,8 +15,21 @@ the site info columns for this sync.
 
 After a submission is stored and the domain write succeeds,
 `ingestFastFieldSubmission` and `reprocessIntegrationEvent` call
-`syncSiteInfoFromSubmission`. That includes site onboarding and boiler
-onboarding.
+`syncSiteInfoFromSubmission`. That includes site onboarding, boiler
+onboarding, and High Pressure device submissions.
+
+High Pressure copies `site_visit_id` (and blank site fields) onto the
+top-level payload before this sync runs, so the field map can write the
+new visit ID column. The map is still empty until you set it. Admin →
+Sites does not call this sync. See [hp-device-e2e-test.md](./hp-device-e2e-test.md).
+
+The credential section below still matches the client on this branch
+(`Ocp-Apim-Subscription-Key` and a bearer user token). The gateway ignores
+that subscription header. For the High Pressure site table write, use the
+auth vars in the High Pressure checklist (`FASTFIELD_API_KEY`,
+`FASTFIELD_USERNAME`, `FASTFIELD_PASSWORD`, and maybe
+`FASTFIELD_SESSION_TOKEN`) and merge the DataTables auth-fix PR first.
+This branch does not change the client.
 
 - A skipped or failed sync does not change the HTTP status of
   `POST /api/fastfield/submissions`. The response field `site_info_sync`
