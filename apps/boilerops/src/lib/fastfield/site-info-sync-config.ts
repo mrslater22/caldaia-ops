@@ -31,12 +31,29 @@ export const SITE_INFO_KEY_COLUMN = "site_code";
  * Leave this empty until the columns are confirmed.
  * Override with `FASTFIELD_SITE_INFO_FIELD_MAP` (JSON object).
  *
- * Suggested map, not applied until set in env or copied here:
- * site_code, bo_siteid, va_loc, va_contact, va_contact_email,
- * va_contact_phone. The live table has no visit ID column yet. Add that
- * column before mapping it. See docs/fastfield-site-info-sync.md.
+ * Suggested identity map, not applied until set in env or copied here:
+ * site_code, va_loc, va_contact, va_contact_email, va_contact_phone,
+ * bo_siteid, bo_qrcode. See SUGGESTED_SITE_INFO_IDENTITY_FIELD_MAP and
+ * docs/fastfield-site-info-sync.md. The live table has no visit ID column
+ * yet. Add that column before mapping it.
  */
 export const SITE_INFO_FIELD_MAP: Readonly<Record<string, string>> = {};
+
+/**
+ * Identity map Michael sets as FASTFIELD_SITE_INFO_FIELD_MAP. Not applied
+ * until that env var is set. Site Onboarding copies generated bo_siteid and
+ * bo_qrcode onto the payload, and fills va_* keys when the form left them
+ * blank. High Pressure also copies va_* when those keys are blank.
+ */
+export const SUGGESTED_SITE_INFO_IDENTITY_FIELD_MAP: Readonly<Record<string, string>> = {
+  site_code: "site_code",
+  va_loc: "va_loc",
+  va_contact: "va_contact",
+  va_contact_email: "va_contact_email",
+  va_contact_phone: "va_contact_phone",
+  bo_siteid: "bo_siteid",
+  bo_qrcode: "bo_qrcode",
+};
 
 export type SiteInfoSyncConfig = {
   /** True only when the flag is on and the key column and field map are set. */

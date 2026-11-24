@@ -347,8 +347,13 @@ that contains the auth fix.
 | `FASTFIELD_HP_VISIT_ID_COLUMN` | Optional. Changes the warning text and the column name you document. Default `Site Visit ID` | Optional. Does not write the column by itself |
 
 Field map for the live display names. Keys are column display names.
-`site_id`, `job_num`, and `bo_qrcode` are on the table and are left out
-because the submission does not carry them. Add `"Site Visit ID":
+Site Onboarding's production map is the identity map in
+[fastfield-site-info-sync.md](./fastfield-site-info-sync.md), including
+`bo_qrcode`. High Pressure copies `va_loc`, `va_contact`,
+`va_contact_email`, and `va_contact_phone` when those keys are blank, so
+that identity map also reads a High Pressure submission. The map below
+still works because `facility_name` and `contact_*` are copied as well.
+`site_id` and `job_num` stay off the map. Add `"Site Visit ID":
 "site_visit_id"` only after that column exists. Until then the map must
 not name it, or the sync fails and writes nothing.
 

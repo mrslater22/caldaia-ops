@@ -68,19 +68,28 @@ Module file: `apps/boilerops/src/lib/fastfield/site-info-sync-config.ts`.
 3. **Field map.** JSON object whose keys are site info column display names
    and whose values are top-level submission field keys:
 
+   Production Site Onboarding uses an identity map. After the site is saved,
+   ingest copies `sites.public_id` onto `bo_siteid` and `qr_target_url` onto
+   `bo_qrcode`, and fills `va_loc`, `va_contact`, `va_contact_email`, and
+   `va_contact_phone` when the form left those keys blank. A non-blank form
+   value is kept. High Pressure also copies the `va_*` keys when they are
+   blank, so this same map can read a High Pressure submission.
+
    ```json
    {
      "site_code": "site_code",
+     "va_loc": "va_loc",
+     "va_contact": "va_contact",
+     "va_contact_email": "va_contact_email",
+     "va_contact_phone": "va_contact_phone",
      "bo_siteid": "bo_siteid",
-     "va_loc": "facility_name",
-     "va_contact": "contact_name",
-     "va_contact_email": "contact_email",
-     "va_contact_phone": "contact_phone"
+     "bo_qrcode": "bo_qrcode"
    }
    ```
 
-   Live display names also include `site_id`, `job_num`, and `bo_qrcode`.
-   This ingest has no submission fields for those, so they stay off the map.
+   Live display names also include `site_id` and `job_num`. This ingest has
+   no submission fields for those, so they stay off the map. `bo_qrcode` is
+   included because Site Onboarding now emits it.
    There is no `Site Visit ID` column yet. Add that column in FastField
    before putting it in the map (`"Site Visit ID": "site_visit_id"`).
    Including it early fails the sync because the display name is missing.

@@ -1,13 +1,30 @@
 import { DEMO_ORGANIZATION_ID } from "@/lib/constants";
+import type { DataTableSyncResult } from "@/lib/fastfield/data-table-sync";
 import {
-  plannedDevicePurpose,
-  resolveDeviceForm,
-  type ResolvedDeviceForm,
-} from "@/lib/fastfield/device-form-config";
+  mapAssetOnboarding,
+  payloadForAssetInfoSync,
+  type AssetOnboardingFieldMappings,
+} from "@/lib/fastfield/asset-onboarding-mapper";
+import { persistAssetOnboarding } from "@/lib/fastfield/asset-onboarding";
+import { createDefaultAssetOnboardingRepository } from "@/lib/fastfield/asset-onboarding-repository";
+import { syncAssetInfoFromSubmission } from "@/lib/fastfield/asset-info-sync";
+import type { ResolvedDeviceForm } from "@/lib/fastfield/device-form-config";
 import {
   mapDeviceSubmission,
   payloadForSiteInfoSync,
 } from "@/lib/fastfield/device-submission";
+import {
+  classifyFastFieldSubmission,
+  UNPROCESSED_PURPOSE,
+} from "@/lib/fastfield/ingest-purpose";
+import {
+  mapInspectionOnboarding,
+  payloadForInspectionInfoSync,
+  type InspectionOnboardingFieldMappings,
+} from "@/lib/fastfield/inspection-onboarding-mapper";
+import { persistInspectionOnboarding } from "@/lib/fastfield/inspection-onboarding";
+import { createDefaultInspectionOnboardingRepository } from "@/lib/fastfield/inspection-onboarding-repository";
+import { syncInspectionInfoFromSubmission } from "@/lib/fastfield/inspection-info-sync";
 import type {
   MappedBoilerOnboarding,
   OnboardingFieldMappings,
@@ -18,6 +35,7 @@ import {
   extractSubmissionId,
   mapBoilerOnboarding,
 } from "@/lib/fastfield/onboarding-mapper";
+import { payloadForSiteOnboardingSiteInfo } from "@/lib/fastfield/site-info-payload";
 import {
   mapSiteOnboarding,
   type SiteOnboardingFieldMappings,
@@ -40,7 +58,9 @@ export type RegisteredForm = {
   purpose: string;
   field_mappings_json:
     | OnboardingFieldMappings
-    | SiteOnboardingFieldMappings;
+    | SiteOnboardingFieldMappings
+    | InspectionOnboardingFieldMappings
+    | AssetOnboardingFieldMappings;
   active: boolean;
 };
 
@@ -89,6 +109,8 @@ export type IngestResult = {
   assetPublicIds: string[];
   fastFieldSyncStatus?: "pending" | "synced" | "failed";
   siteInfoSync?: SiteInfoSyncResult;
+  inspectionInfoSync?: DataTableSyncResult;
+  assetInfoSync?: DataTableSyncResult;
   visitPublicId: string | null;
   siteVisitId: string | null;
   visitCreated: boolean | null;
@@ -121,6 +143,14 @@ type DomainWrite = DeviceResultFields & {
   assetPublicIds: string[];
   fastFieldSyncStatus?: "pending" | "synced" | "failed";
   siteInfoSync?: SiteInfoSyncResult;
+  inspectionInfoSync?: DataTableSyncResult;
+  assetInfoSync?: DataTableSyncResult;
+};
+
+type SyncPayloads = {
+  siteInfo?: Record<string, unknown>;
+  inspectionInfo?: Record<string, unknown>;
+  assetInfo?: Record<string, unknown>;
 };
 
 function emptyDeviceFields(): DeviceResultFields {
@@ -158,86 +188,77 @@ function joinWarning(left?: string, right?: string): string | undefined {
   return parts.length ? parts.join(" ") : undefined;
 }
 
-function inferPurpose(
-  registered: RegisteredForm | null,
-  payload: Record<string, unknown>,
-): string {
-  if (registered) return registered.purpose;
-  const formId = extractFormId(payload);
-  const formName = extractFormName(payload)?.toLowerCase();
-  if (formId === "1244818" || formName === "site onboarding") {
-    return "site_onboarding";
-  }
-  return "boiler_onboarding";
-}
+const RETRYABLE_FAILED_PURPOSES = new Set([
+  "high_pressure",
+  "inspection_onboarding",
+  "asset_onboarding",
+]);
 
 /**
- * Site info upsert must not fail submission ingest. The sync itself returns
- * failures, and this wrapper catches anything unexpected.
+ * Data Table upserts must not fail submission ingest. Each sync returns
+ * failures, and these wrappers catch anything unexpected.
  */
-async function runSiteInfoSync(
+async function runTableSync(
+  label: string,
   payload: Record<string, unknown>,
-): Promise<SiteInfoSyncResult> {
+  sync: (payload: Record<string, unknown>) => Promise<DataTableSyncResult>,
+): Promise<DataTableSyncResult> {
   try {
-    return await syncSiteInfoFromSubmission(payload);
+    return await sync(payload);
   } catch (error) {
     const reason =
-      error instanceof Error ? error.message : "Site info sync failed.";
-    console.error(`[fastfield site-info sync] unexpected error: ${reason}`);
+      error instanceof Error ? error.message : `${label} sync failed.`;
+    console.error(`[fastfield ${label} sync] unexpected error: ${reason}`);
     return { status: "failed", reason };
   }
 }
 
-function noteSiteInfoSyncFailure(
+function noteTableSyncFailure(
   warning: string | undefined,
-  sync: SiteInfoSyncResult,
+  label: string,
+  sync: DataTableSyncResult | undefined,
 ): string | undefined {
-  if (sync.status !== "failed") return warning;
-  const note = `Site info Data Table sync failed: ${sync.reason}`;
+  if (!sync || sync.status !== "failed") return warning;
+  const note = `${label} Data Table sync failed: ${sync.reason}`;
   return warning ? `${warning} ${note}` : note;
 }
 
-type Classification = {
-  registered: RegisteredForm | null;
-  purpose: string;
-  deviceForm: ResolvedDeviceForm | null;
+async function applyTableSyncs(
+  purpose: string,
+  syncPayloads: SyncPayloads,
+  deviceForm: ResolvedDeviceForm | null,
+  warning?: string,
+): Promise<{
   warning?: string;
-};
+  siteInfoSync?: SiteInfoSyncResult;
+  inspectionInfoSync?: DataTableSyncResult;
+  assetInfoSync?: DataTableSyncResult;
+}> {
+  const siteInfoSync = syncPayloads.siteInfo
+    ? await runTableSync("site-info", syncPayloads.siteInfo, syncSiteInfoFromSubmission)
+    : undefined;
+  const inspectionInfoSync = syncPayloads.inspectionInfo
+    ? await runTableSync(
+        "inspection-info",
+        syncPayloads.inspectionInfo,
+        syncInspectionInfoFromSubmission,
+      )
+    : undefined;
+  const assetInfoSync = syncPayloads.assetInfo
+    ? await runTableSync(
+        "asset-info",
+        syncPayloads.assetInfo,
+        syncAssetInfoFromSubmission,
+      )
+    : undefined;
 
-function classifySubmission(
-  payload: Record<string, unknown>,
-  registered: RegisteredForm | null,
-): Classification {
-  const deviceForm = resolveDeviceForm(payload, registered);
-  const planned = deviceForm
-    ? null
-    : plannedDevicePurpose(payload, registered);
-  const purpose =
-    deviceForm?.definition.purpose ??
-    planned ??
-    inferPurpose(registered, payload);
-  const parts: string[] = [];
-  if (!registered) {
-    parts.push(
-      `No registered FastField form matched this submission; inferred ${purpose}.`,
-    );
+  let next = noteTableSyncFailure(warning, "Site info", siteInfoSync);
+  if (siteInfoSync) {
+    next = noteVisitColumnSkipped(next, purpose, siteInfoSync, deviceForm);
   }
-  if (deviceForm?.purposeOverridden) {
-    parts.push(
-      `Registered purpose was "${registered?.purpose}". The form matched ${deviceForm.definition.displayName}, so it was ingested as ${deviceForm.definition.purpose}.`,
-    );
-  }
-  if (deviceForm && deviceForm.ignoredMappingKeys.length > 0) {
-    parts.push(
-      `Ignored field mapping keys that are not device-form fields: ${deviceForm.ignoredMappingKeys.join(", ")}.`,
-    );
-  }
-  return {
-    registered,
-    purpose,
-    deviceForm,
-    warning: parts.length ? parts.join(" ") : undefined,
-  };
+  next = noteTableSyncFailure(next, "Inspection info", inspectionInfoSync);
+  next = noteTableSyncFailure(next, "Asset info", assetInfoSync);
+  return { warning: next, siteInfoSync, inspectionInfoSync, assetInfoSync };
 }
 
 async function writeDomain(
@@ -249,7 +270,7 @@ async function writeDomain(
 ): Promise<{
   created: DomainWrite;
   warning?: string;
-  siteInfoPayload: Record<string, unknown>;
+  syncPayloads: SyncPayloads;
 }> {
   if (purpose === "site_onboarding") {
     const mappings = (registered?.field_mappings_json ??
@@ -266,7 +287,17 @@ async function writeDomain(
         fastFieldSyncStatus: sync.status,
       },
       warning: sync.error,
-      siteInfoPayload: payload,
+      syncPayloads: {
+        siteInfo: payloadForSiteOnboardingSiteInfo(payload, {
+          bo_siteid: persisted.site.public_id,
+          bo_qrcode: persisted.site.qr_target_url,
+          site_code: mapped.site_code,
+          va_loc: mapped.facility_name,
+          va_contact: mapped.contact_name,
+          va_contact_email: mapped.contact_email,
+          va_contact_phone: mapped.contact_phone,
+        }),
+      },
     };
   }
 
@@ -282,7 +313,70 @@ async function writeDomain(
         boilerPublicId: boiler.boilerPublicId,
         assetPublicIds: boiler.assetPublicIds,
       },
-      siteInfoPayload: payload,
+      syncPayloads: { siteInfo: payload },
+    };
+  }
+
+  if (purpose === "inspection_onboarding") {
+    const mappings = (registered?.field_mappings_json ??
+      {}) as InspectionOnboardingFieldMappings;
+    const mapped = mapInspectionOnboarding(payload, mappings);
+    const persisted = await persistInspectionOnboarding(mapped, {
+      organizationId: DEMO_ORGANIZATION_ID,
+      repository: createDefaultInspectionOnboardingRepository(),
+    });
+    return {
+      created: {
+        ...emptyDeviceFields(),
+        sitePublicId: persisted.sitePublicId,
+        boilerPublicId: null,
+        assetPublicIds: [],
+        targetPublicId: persisted.targetPublicId,
+        targetCreated: persisted.created,
+      },
+      syncPayloads: {
+        inspectionInfo: payloadForInspectionInfoSync(
+          payload,
+          mapped,
+          {
+            bo_targetid: persisted.targetPublicId,
+            bo_siteid: persisted.sitePublicId,
+          },
+          mappings,
+        ),
+      },
+    };
+  }
+
+  if (purpose === "asset_onboarding") {
+    const mappings = (registered?.field_mappings_json ??
+      {}) as AssetOnboardingFieldMappings;
+    const mapped = mapAssetOnboarding(payload, mappings);
+    const persisted = await persistAssetOnboarding(mapped, {
+      organizationId: DEMO_ORGANIZATION_ID,
+      repository: createDefaultAssetOnboardingRepository(),
+    });
+    return {
+      created: {
+        ...emptyDeviceFields(),
+        sitePublicId: persisted.sitePublicId,
+        boilerPublicId: null,
+        assetPublicIds: [persisted.assetPublicId],
+        targetPublicId: persisted.targetPublicId,
+        targetCreated: false,
+      },
+      syncPayloads: {
+        assetInfo: payloadForAssetInfoSync(
+          payload,
+          mapped,
+          {
+            bo_assetid: persisted.assetPublicId,
+            bo_targetid: persisted.targetPublicId,
+            bo_siteid: persisted.sitePublicId,
+          },
+          mappings,
+        ),
+      },
     };
   }
 
@@ -315,12 +409,14 @@ async function writeDomain(
         reportStatus: recorded.reportStatus,
         reportDeviceCount: recorded.reportDeviceCount,
       },
-      siteInfoPayload: payloadForSiteInfoSync(
-        payload,
-        deviceForm.definition,
-        recorded.externalVisitId,
-        mapped,
-      ),
+      syncPayloads: {
+        siteInfo: payloadForSiteInfoSync(
+          payload,
+          deviceForm.definition,
+          recorded.externalVisitId,
+          mapped,
+        ),
+      },
     };
   }
 
@@ -357,7 +453,7 @@ export async function ingestFastFieldSubmission(
   const submissionId = extractSubmissionId(payload);
   const formId = extractFormId(payload);
   const registered = await resolveRegisteredForm(payload);
-  const classification = classifySubmission(payload, registered);
+  const classification = classifyFastFieldSubmission(payload, registered);
   const purpose = classification.purpose;
   const idempotencyKey = `fastfield:${purpose}:${submissionId}`;
 
@@ -367,14 +463,16 @@ export async function ingestFastFieldSubmission(
     .eq("idempotency_key", idempotencyKey)
     .maybeSingle();
 
-  const retryFailedVisit =
-    existing?.status === "failed" && purpose === "high_pressure";
+  const retryFailed =
+    existing?.status === "failed" && RETRYABLE_FAILED_PURPOSES.has(purpose);
 
-  if (existing && !retryFailedVisit) {
+  if (existing && !retryFailed) {
     const legacyPayload = existing.payload_json as {
       result?: DomainWrite;
     } | null;
-    const prior = (existing.result_json ?? legacyPayload?.result ?? {}) as DomainWrite;
+    const prior = (existing.result_json ?? legacyPayload?.result ?? {}) as DomainWrite & {
+      warning?: string;
+    };
     return {
       eventId: existing.id,
       submissionId,
@@ -386,7 +484,10 @@ export async function ingestFastFieldSubmission(
       assetPublicIds: prior.assetPublicIds ?? [],
       fastFieldSyncStatus: prior.fastFieldSyncStatus,
       siteInfoSync: prior.siteInfoSync,
+      inspectionInfoSync: prior.inspectionInfoSync,
+      assetInfoSync: prior.assetInfoSync,
       ...deviceFieldsFrom(prior),
+      warning: prior.warning ?? classification.warning,
     };
   }
 
@@ -426,6 +527,34 @@ export async function ingestFastFieldSubmission(
   let warning = classification.warning;
 
   try {
+    if (classification.unprocessed) {
+      const reason =
+        classification.warning ??
+        "Unregistered FastField form. The raw submission was stored for review and was not processed as boiler onboarding.";
+      await supabase
+        .from("integration_events")
+        .update({
+          status: UNPROCESSED_PURPOSE,
+          event_type: UNPROCESSED_PURPOSE,
+          error_message: reason,
+          processed_at: new Date().toISOString(),
+          result_json: { warning: reason, review: true },
+        })
+        .eq("id", eventId);
+      return {
+        eventId: eventId!,
+        submissionId,
+        formId: formId ?? registered?.fastfield_form_id ?? null,
+        purpose: UNPROCESSED_PURPOSE,
+        duplicate: false,
+        sitePublicId: null,
+        boilerPublicId: null,
+        assetPublicIds: [],
+        ...emptyDeviceFields(),
+        warning: reason,
+      };
+    }
+
     const written = await writeDomain(
       payload,
       registered,
@@ -434,15 +563,16 @@ export async function ingestFastFieldSubmission(
       classification.deviceForm,
     );
     warning = joinWarning(warning, written.warning);
-    const siteInfoSync = await runSiteInfoSync(written.siteInfoPayload);
-    written.created.siteInfoSync = siteInfoSync;
-    warning = noteSiteInfoSyncFailure(warning, siteInfoSync);
-    warning = noteVisitColumnSkipped(
-      warning,
+    const synced = await applyTableSyncs(
       purpose,
-      siteInfoSync,
+      written.syncPayloads,
       classification.deviceForm,
+      warning,
     );
+    warning = synced.warning;
+    written.created.siteInfoSync = synced.siteInfoSync;
+    written.created.inspectionInfoSync = synced.inspectionInfoSync;
+    written.created.assetInfoSync = synced.assetInfoSync;
 
     await supabase
       .from("integration_events")
@@ -463,7 +593,9 @@ export async function ingestFastFieldSubmission(
       boilerPublicId: written.created.boilerPublicId,
       assetPublicIds: written.created.assetPublicIds,
       fastFieldSyncStatus: written.created.fastFieldSyncStatus,
-      siteInfoSync,
+      siteInfoSync: synced.siteInfoSync,
+      inspectionInfoSync: synced.inspectionInfoSync,
+      assetInfoSync: synced.assetInfoSync,
       ...deviceFieldsFrom(written.created),
       warning,
     };
@@ -513,8 +645,38 @@ export async function reprocessIntegrationEvent(eventId: string) {
 
   const submissionId = extractSubmissionId(rawPayload);
   const registered = await resolveRegisteredForm(rawPayload);
-  const classification = classifySubmission(rawPayload, registered);
+  const classification = classifyFastFieldSubmission(rawPayload, registered);
   const purpose = classification.purpose;
+
+  if (classification.unprocessed) {
+    const reason =
+      classification.warning ??
+      "Unregistered FastField form. The raw submission was stored for review and was not processed as boiler onboarding.";
+    await supabase
+      .from("integration_events")
+      .update({
+        status: UNPROCESSED_PURPOSE,
+        event_type: UNPROCESSED_PURPOSE,
+        fastfield_form_id:
+          extractFormId(rawPayload) ?? registered?.fastfield_form_id ?? null,
+        error_message: reason,
+        processed_at: new Date().toISOString(),
+        payload_json: rawPayload,
+        result_json: { warning: reason, review: true },
+      })
+      .eq("id", eventId);
+    return {
+      eventId,
+      submissionId,
+      purpose: UNPROCESSED_PURPOSE,
+      sitePublicId: null,
+      boilerPublicId: null,
+      assetPublicIds: [],
+      ...emptyDeviceFields(),
+      warning: reason,
+    };
+  }
+
   const written = await writeDomain(
     rawPayload,
     registered,
@@ -522,16 +684,16 @@ export async function reprocessIntegrationEvent(eventId: string) {
     submissionId,
     classification.deviceForm,
   );
-  let warning = joinWarning(classification.warning, written.warning);
-  const siteInfoSync = await runSiteInfoSync(written.siteInfoPayload);
-  written.created.siteInfoSync = siteInfoSync;
-  warning = noteSiteInfoSyncFailure(warning, siteInfoSync);
-  warning = noteVisitColumnSkipped(
-    warning,
+  const synced = await applyTableSyncs(
     purpose,
-    siteInfoSync,
+    written.syncPayloads,
     classification.deviceForm,
+    joinWarning(classification.warning, written.warning),
   );
+  const warning = synced.warning;
+  written.created.siteInfoSync = synced.siteInfoSync;
+  written.created.inspectionInfoSync = synced.inspectionInfoSync;
+  written.created.assetInfoSync = synced.assetInfoSync;
 
   await supabase
     .from("integration_events")
@@ -554,7 +716,9 @@ export async function reprocessIntegrationEvent(eventId: string) {
     sitePublicId: written.created.sitePublicId,
     boilerPublicId: written.created.boilerPublicId,
     assetPublicIds: written.created.assetPublicIds,
-    siteInfoSync,
+    siteInfoSync: synced.siteInfoSync,
+    inspectionInfoSync: synced.inspectionInfoSync,
+    assetInfoSync: synced.assetInfoSync,
     fastFieldSyncStatus: written.created.fastFieldSyncStatus,
     ...deviceFieldsFrom(written.created),
     warning,
