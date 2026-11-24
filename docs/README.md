@@ -9,6 +9,7 @@
 | [hp-device-e2e-test.md](./hp-device-e2e-test.md) | High Pressure device-form test script, checklist, and Low Pressure plan |
 | [fastfield-submission-implementation-pattern.md](./fastfield-submission-implementation-pattern.md) | Repeatable Site Onboarding implementation pattern for future forms |
 | [data-dictionary.md](./data-dictionary.md) | Domain entities |
+| [migrations-applied.md](./migrations-applied.md) | Which migrations have been applied to which environment |
 | [api-contracts.md](./api-contracts.md) | Planned endpoints |
 | [ai-asset-intelligence.md](./ai-asset-intelligence.md) | Enrichment pipeline |
 | [portal-scope.md](./portal-scope.md) | Portal + tickets |

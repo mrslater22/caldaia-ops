@@ -69,6 +69,13 @@ visit ID column.
    that visit if the form reads the value back from the site table. Do not
    depend on that round trip until the sync checklist is proven.
 
+**Applied to prod 2026-11-23.** Michael Slater applied
+`supabase/migrations/20261123_site_visits.sql` by hand in the Supabase SQL
+editor at about 9:31 AM ET (14:31 UTC). `pg_tables` then showed
+`site_visits`, `site_visit_device_tests`, and `site_visit_reports`, each
+with `rowsecurity = true`. No seed data was loaded. Record:
+[migrations-applied.md](./migrations-applied.md).
+
 ## FastField form setup
 
 Create one form named **High Pressure**. Purpose in BoilerOps, if you
@@ -406,11 +413,12 @@ with RLS denied for `anon` and `authenticated`. The app uses the service
 role. `device_type` allows `low_pressure` so the next form does not need
 another migration for that check. No Low Pressure code reads the table yet.
 
-This change was not applied to any shared, staging, or production database.
-Apply it in the Supabase SQL editor, or with the Supabase CLI against the
-project you mean to test, the same way previous migrations were applied.
-If the Vercel preview uses the production Supabase project, this is a
-production schema change. Approve it before running it.
+**Applied to prod 2026-11-23.** See Prerequisites and
+[migrations-applied.md](./migrations-applied.md). No other shared or
+staging database is recorded here. For any other project, apply this file
+in the Supabase SQL editor, or with the Supabase CLI, the same way previous
+migrations were applied. If the Vercel preview uses the production Supabase
+project, the schema change is already on that project.
 
 No earlier migration needs to be re-applied.
 
