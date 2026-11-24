@@ -262,6 +262,12 @@ export const ADMIN_DOCUMENTS: AdminDocument[] = [
             ["Asset Info", "One flattened row per physical safety or measurement asset", "bo_assetid"],
           ],
         },
+        bullets: [
+          "Site Onboarding publishes bo_siteid and bo_qrcode onto the Site Info payload after the site is saved.",
+          "inspection_onboarding upserts inspection_targets by bo_targetid and requires an existing site.",
+          "asset_onboarding upserts assets by bo_assetid and requires an existing inspection target.",
+          "Inspection Info and Asset Info DataTables syncs are off until FASTFIELD_INSPECTION_INFO_SYNC_ENABLED and FASTFIELD_ASSET_INFO_SYNC_ENABLED are set.",
+        ],
       },
     ],
   },

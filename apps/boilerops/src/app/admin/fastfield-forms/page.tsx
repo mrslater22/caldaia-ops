@@ -2,6 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  FORM_REGISTRATION_PRESETS,
+  formRegistrationPreset,
+  isPendingFormId,
+} from "@/lib/fastfield/form-registration";
 
 type FastFieldForm = {
   id: string;
@@ -15,15 +20,7 @@ type FastFieldForm = {
   created_at: string;
 };
 
-const DEFAULT_MAPPINGS = `{
-  "facility_name": "facility_name",
-  "site_code": "site_code",
-  "boiler_tag": "boiler_tag",
-  "manufacturer": "boiler_manufacturer",
-  "model": "boiler_model",
-  "serial_number": "boiler_serial",
-  "assets": "assets"
-}`;
+const INITIAL_PRESET = formRegistrationPreset("boiler_onboarding")!;
 
 export default function FastFieldFormsAdminPage() {
   const [forms, setForms] = useState<FastFieldForm[]>([]);
@@ -33,11 +30,22 @@ export default function FastFieldFormsAdminPage() {
   const [saving, setSaving] = useState(false);
 
   const [formId, setFormId] = useState("");
-  const [name, setName] = useState("Boiler Onboarding");
-  const [purpose, setPurpose] = useState("boiler_onboarding");
+  const [name, setName] = useState<string>(INITIAL_PRESET.name);
+  const [purpose, setPurpose] = useState<string>(INITIAL_PRESET.value);
   const [schemaText, setSchemaText] = useState("{\n  \"fields\": []\n}");
-  const [mappingsText, setMappingsText] = useState(DEFAULT_MAPPINGS);
+  const [mappingsText, setMappingsText] = useState(
+    JSON.stringify(INITIAL_PRESET.mappings, null, 2),
+  );
   const [notes, setNotes] = useState("");
+  const [active, setActive] = useState(true);
+
+  function changePurpose(next: string) {
+    setPurpose(next);
+    const preset = formRegistrationPreset(next);
+    if (!preset) return;
+    setName(preset.name);
+    setMappingsText(JSON.stringify(preset.mappings, null, 2));
+  }
 
   async function loadForms() {
     setLoading(true);
@@ -88,7 +96,7 @@ export default function FastFieldFormsAdminPage() {
           schema_json,
           field_mappings_json,
           notes,
-          active: true,
+          active,
         }),
       });
       const data = await res.json();
@@ -115,8 +123,9 @@ export default function FastFieldFormsAdminPage() {
             FastField forms
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Register form ID + schema so ingest knows how to process
-            submissions. See{" "}
+            Register a form by name and purpose. The FastField form ID can
+            be added later. An unknown form is stored for review and is not
+            processed as boiler onboarding. See{" "}
             <code className="text-foreground">docs/fastfield-form-schema.md</code>
             .
           </p>
@@ -137,12 +146,15 @@ export default function FastFieldFormsAdminPage() {
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">FastField form ID</span>
             <input
-              required
               value={formId}
               onChange={(e) => setFormId(e.target.value)}
               className="w-full rounded-md border border-border px-3 py-2"
-              placeholder="e.g. 12345 or GUID"
+              placeholder="Leave blank until the form ID is known"
             />
+            <span className="block text-xs text-muted">
+              Blank saves a placeholder id. Ingest matches the form name until
+              you come back and set the real id.
+            </span>
           </label>
           <label className="space-y-1.5 text-sm">
             <span className="font-medium">Name</span>
@@ -157,12 +169,14 @@ export default function FastFieldFormsAdminPage() {
             <span className="font-medium">Purpose</span>
             <select
               value={purpose}
-              onChange={(e) => setPurpose(e.target.value)}
+              onChange={(e) => changePurpose(e.target.value)}
               className="w-full rounded-md border border-border px-3 py-2"
             >
-              <option value="site_onboarding">site_onboarding</option>
-              <option value="boiler_onboarding">boiler_onboarding</option>
-              <option value="high_pressure">high_pressure</option>
+              {FORM_REGISTRATION_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.value}
+                </option>
+              ))}
             </select>
           </label>
           <label className="space-y-1.5 text-sm">
@@ -172,6 +186,17 @@ export default function FastFieldFormsAdminPage() {
               onChange={(e) => setNotes(e.target.value)}
               className="w-full rounded-md border border-border px-3 py-2"
             />
+          </label>
+          <label className="flex items-center gap-2 text-sm md:col-span-2">
+            <input
+              type="checkbox"
+              checked={active}
+              onChange={(e) => setActive(e.target.checked)}
+            />
+            <span className="font-medium">Active</span>
+            <span className="text-muted">
+              Uncheck and save to stop ingest from applying this form.
+            </span>
           </label>
         </div>
 
@@ -244,7 +269,9 @@ export default function FastFieldFormsAdminPage() {
                 {forms.map((form) => (
                   <tr key={form.id} className="border-b border-border">
                     <td className="px-3 py-2 font-mono text-xs">
-                      {form.fastfield_form_id}
+                      {isPendingFormId(form.fastfield_form_id)
+                        ? "pending"
+                        : form.fastfield_form_id}
                     </td>
                     <td className="px-3 py-2">{form.name}</td>
                     <td className="px-3 py-2">{form.purpose}</td>

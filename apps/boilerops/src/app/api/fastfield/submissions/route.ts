@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { ingestFastFieldSubmission } from "@/lib/fastfield/ingest";
+import {
+  submissionHttpStatus,
+  submissionResponseBody,
+} from "@/lib/fastfield/submission-response";
 import { authorizeFastFieldRequest } from "@/lib/fastfield/webhook-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 
@@ -44,46 +48,9 @@ export async function POST(request: Request) {
       process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
       "http://localhost:3000";
 
-    return NextResponse.json(
-      {
-        ok: true,
-        duplicate: result.duplicate,
-        event_id: result.eventId,
-        submission_id: result.submissionId,
-        form_id: result.formId,
-        purpose: result.purpose,
-        warning: result.warning ?? null,
-        site_public_id: result.sitePublicId,
-        boiler_public_id: result.boilerPublicId,
-        asset_public_ids: result.assetPublicIds,
-        fastfield_sync_status: result.fastFieldSyncStatus ?? null,
-        site_info_sync: result.siteInfoSync ?? null,
-        visit_public_id: result.visitPublicId,
-        site_visit_id: result.siteVisitId,
-        visit_created: result.visitCreated,
-        target_public_id: result.targetPublicId,
-        target_created: result.targetCreated,
-        device_test_public_id: result.deviceTestPublicId,
-        device_test_created: result.deviceTestCreated,
-        report_public_id: result.reportPublicId,
-        report_status: result.reportStatus,
-        report_device_count: result.reportDeviceCount,
-        urls: result.sitePublicId
-          ? {
-              site: `${appUrl}/i/site/${result.sitePublicId}`,
-              site_qr: `${appUrl}/i/site/${result.sitePublicId}/qr`,
-            }
-          : result.boilerPublicId
-          ? {
-              boiler: `${appUrl}/i/boiler/${result.boilerPublicId}`,
-              assets: result.assetPublicIds.map(
-                (id) => `${appUrl}/i/asset/${id}`,
-              ),
-            }
-          : null,
-      },
-      { status: result.duplicate ? 200 : 201 },
-    );
+    return NextResponse.json(submissionResponseBody(result, appUrl), {
+      status: submissionHttpStatus(result),
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to ingest submission.";

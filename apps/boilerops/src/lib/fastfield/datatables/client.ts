@@ -29,11 +29,21 @@ export type DataTableResponse<T> = {
   parsed: T;
 };
 
+export type ResolvedTable =
+  | { ok: true; tableId: string; fields: TableField[] }
+  | { ok: false; reason: string };
+
 export type DataTableClient = {
-  resolveTableId(tableName: string): Promise<
-    | { ok: true; tableId: string; fields: TableField[] }
-    | { ok: false; reason: string }
-  >;
+  /**
+   * Resolve listId and config.fields. A non-empty listId matches that id
+   * (the list entry's listId, else dataTableId, else id). Otherwise the
+   * table name is matched, trimmed and case-insensitive.
+   */
+  resolveTable(query: {
+    tableName: string;
+    listId?: string;
+  }): Promise<ResolvedTable>;
+  resolveTableId(tableName: string): Promise<ResolvedTable>;
   lookupItem(
     tableId: string,
     keyColumn: string,
@@ -122,24 +132,30 @@ export function createDataTableClient(options?: {
     }
   }
 
-  return {
-    async resolveTableId(tableName) {
-      const cacheKey = tableName.trim().toLowerCase();
-      const cached = tableIds.get(cacheKey);
-      if (cached) return { ok: true, ...cached };
+  async function resolveTable(query: {
+    tableName: string;
+    listId?: string;
+  }): Promise<ResolvedTable> {
+    const listId = query.listId?.trim() ?? "";
+    const cacheKey = listId
+      ? `id:${listId.toLowerCase()}`
+      : query.tableName.trim().toLowerCase();
+    const cached = tableIds.get(cacheKey);
+    if (cached) return { ok: true, ...cached };
 
-      const listed = await request("list", "/datatables/list", { method: "GET" });
-      if (listed.status < 200 || listed.status >= 300) {
-        return {
-          ok: false,
-          reason: `GET /datatables/list failed with HTTP ${listed.status}. No row was written.`,
-        };
-      }
+    const listed = await request("list", "/datatables/list", { method: "GET" });
+    if (listed.status < 200 || listed.status >= 300) {
+      return {
+        ok: false,
+        reason: `GET /datatables/list failed with HTTP ${listed.status}. No row was written.`,
+      };
+    }
 
-      const tables = parseTables(listed.body);
-      const wanted = tableName.trim().toLowerCase();
+    const tables = parseTables(listed.body);
+    if (listId) {
+      const wantedId = listId.toLowerCase();
       const matches = tables.filter(
-        (table) => table.name.trim().toLowerCase() === wanted,
+        (table) => table.id.trim().toLowerCase() === wantedId,
       );
       if (matches.length === 1) {
         const resolved = { tableId: matches[0].id, fields: matches[0].fields };
@@ -149,14 +165,41 @@ export function createDataTableClient(options?: {
       if (matches.length > 1) {
         return {
           ok: false,
-          reason: `GET /datatables/list returned ${matches.length} tables named ${JSON.stringify(tableName)} after trimming and ignoring case. No row was written.`,
+          reason: `GET /datatables/list returned ${matches.length} tables with listId ${JSON.stringify(listId)}. No row was written.`,
         };
       }
-      const names = [...new Set(tables.map((table) => table.name))].slice(0, 30);
       return {
         ok: false,
-        reason: `No Data Table named ${JSON.stringify(tableName)}. Names parsed from GET /datatables/list: ${names.length > 0 ? names.join(", ") : "(none)"}. No row was written.`,
+        reason: `No Data Table with listId ${JSON.stringify(listId)}. No row was written.`,
       };
+    }
+
+    const wanted = query.tableName.trim().toLowerCase();
+    const matches = tables.filter(
+      (table) => table.name.trim().toLowerCase() === wanted,
+    );
+    if (matches.length === 1) {
+      const resolved = { tableId: matches[0].id, fields: matches[0].fields };
+      tableIds.set(cacheKey, resolved);
+      return { ok: true, ...resolved };
+    }
+    if (matches.length > 1) {
+      return {
+        ok: false,
+        reason: `GET /datatables/list returned ${matches.length} tables named ${JSON.stringify(query.tableName)} after trimming and ignoring case. No row was written.`,
+      };
+    }
+    const names = [...new Set(tables.map((table) => table.name))].slice(0, 30);
+    return {
+      ok: false,
+      reason: `No Data Table named ${JSON.stringify(query.tableName)}. Names parsed from GET /datatables/list: ${names.length > 0 ? names.join(", ") : "(none)"}. No row was written.`,
+    };
+  }
+
+  return {
+    resolveTable,
+    resolveTableId(tableName) {
+      return resolveTable({ tableName });
     },
 
     async lookupItem(tableId, keyColumn, keyValue) {

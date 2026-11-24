@@ -128,6 +128,12 @@ export function payloadForSiteInfoSync(
     [definition.fields.contactName, mapped.contactName],
     [definition.fields.contactEmail, mapped.contactEmail],
     [definition.fields.contactPhone, mapped.contactPhone],
+    // Identity-map aliases. Blank keys are filled so one Site Info field
+    // map can read va_* as well as the High Pressure field names.
+    ["va_loc", mapped.facilityName],
+    ["va_contact", mapped.contactName],
+    ["va_contact_email", mapped.contactEmail],
+    ["va_contact_phone", mapped.contactPhone],
   ];
   for (const [key, value] of copies) {
     if (!value) continue;

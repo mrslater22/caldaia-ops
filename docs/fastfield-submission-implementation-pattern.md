@@ -82,7 +82,12 @@ Code:
   `/admin/fastfield-forms`
 
 Every new form must have a unique purpose. Do not route unrelated payloads
-through a generic fallback mapper.
+through a generic fallback mapper. An unregistered form, or a registered
+purpose this ingest does not implement, is stored on `integration_events`
+with status `unprocessed` and is not treated as `boiler_onboarding`. The
+webhook still returns HTTP 201 with `ok: true` and a warning. Admin →
+FastField forms can register `inspection_onboarding` and `asset_onboarding`
+by name before the FastField form id exists (`pending:<purpose>`).
 
 ## 5. Inbound Authentication
 
@@ -275,10 +280,15 @@ above. It does nothing until `FASTFIELD_SITE_INFO_SYNC_ENABLED=true` and the
 site key column plus field map are filled in. A failure is logged and does
 not fail `POST /api/fastfield/submissions`.
 
-Code: `apps/boilerops/src/lib/fastfield/site-info-sync.ts`  
+Code: `apps/boilerops/src/lib/fastfield/data-table-sync.ts` (Site Info wrapper: `site-info-sync.ts`)  
 Configuration: `apps/boilerops/src/lib/fastfield/site-info-sync-config.ts`  
 Auth: `apps/boilerops/src/lib/fastfield/auth.ts` (`FastField-API-Key` and `X-Gatekeeper-SessionToken`)  
 What Michael must fill in: [fastfield-site-info-sync.md](./fastfield-site-info-sync.md)
+
+The same engine upserts Inspection Info and Asset Info. Those syncs are off
+until `FASTFIELD_INSPECTION_INFO_SYNC_ENABLED` and
+`FASTFIELD_ASSET_INFO_SYNC_ENABLED` are set, and a failure does not fail
+ingest. See [fastfield-inspection-asset-onboarding.md](./fastfield-inspection-asset-onboarding.md).
 
 The legacy `sync_url` projector is unchanged. It still reads `FASTFIELD_API_KEY` and `FASTFIELD_SESSION_TOKEN`, with its own header names.
 

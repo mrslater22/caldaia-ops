@@ -331,6 +331,7 @@ describe("High Pressure form mapping", () => {
     assert.equal(stamped.bo_siteid, "site_keep");
     assert.equal(stamped.site_visit_id, "VISIT-CAP-1");
     assert.equal(stamped.facility_name, "From nested");
+    assert.equal(stamped.va_loc, "From nested");
   });
 });
 

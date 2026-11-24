@@ -127,7 +127,7 @@ export function logResponseShape(
   if (loggedShapes.has(key)) return;
   loggedShapes.add(key);
   console.info(
-    `[fastfield site-info sync] first ${operation} ${kind} response shape status=${status} body=${JSON.stringify(redactStructure(body))}`,
+    `[fastfield data-table sync] first ${operation} ${kind} response shape status=${status} body=${JSON.stringify(redactStructure(body))}`,
   );
 }
 
